@@ -8,6 +8,7 @@ This package assumes that you connect the servos using the URT board (a full dup
 It also requires you to clone [Dynamixel SDK](https://github.com/ROBOTIS-GIT/DynamixelSDK) into your ROS2 workspace and build it.
 
 Example folder structure:
+```
 ros2_ws
 ├── _config.yml
 ├── src
@@ -16,6 +17,7 @@ ros2_ws
 │       ├── dynamixel_sdk
 │       ├── dynamixel_sdk_examples (not strictly necessary)
 │       └── dynamixel_sdk_custom_interfaces (not strictly necessary)
+```
 
 ### WiringPi (WiringOP)
 To interface with the companion computer (Orange Pi 5) GPIO I'm using the [wiringOP](https://github.com/orangepi-xunlong/wiringOP) library, which you can just install according to instructions. After installing use `gpio readall` to find the pin allocation for your particular board. The pins in the code follow the wPi column of the output. 

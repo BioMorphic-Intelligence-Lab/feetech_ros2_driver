@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(driver_feetech_servo)
+project(feetech_ros2_driver)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -12,8 +12,8 @@ find_package(geometry_msgs REQUIRED)
 #find_package(wiringPi REQUIRED)
 find_package(dynamixel_sdk REQUIRED)
 
-add_executable(driver_feetech_servo src/driver_feetech_servo.cpp)
-ament_target_dependencies(driver_feetech_servo 
+add_executable(feetech_ros2_driver src/feetech_ros2_driver.cpp)
+ament_target_dependencies(feetech_ros2_driver 
   rclcpp 
   geometry_msgs
   dynamixel_sdk
@@ -24,12 +24,12 @@ include_directories(
 )
 
 # link wiringPi library
-target_link_libraries(driver_feetech_servo
+target_link_libraries(feetech_ros2_driver
     wiringPi
 )
 
 install(TARGETS
-  driver_feetech_servo
+feetech_ros2_driver
   DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

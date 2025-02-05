@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DRIVER_FEETECH_SERVO_HPP_
-#define DRIVER_FEETECH_SERVO_HPP_
+#ifndef FEETECH_ROS2_DRIVER_HPP_
+#define FEETECH_ROS2_DRIVER_HPP_
 
 #include <cstdio>
 #include <memory>
@@ -169,4 +169,4 @@ private:
   rclcpp::TimerBase::SharedPtr mTimer;
 };
 
-#endif  // DRIVER_FEETECH_SERVO_HPP_
+#endif  // FEETECH_ROS2_DRIVER_HPP_

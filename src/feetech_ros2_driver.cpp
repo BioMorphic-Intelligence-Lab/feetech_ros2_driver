@@ -36,7 +36,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rcutils/cmdline_parser.h"
 
-#include "driver_feetech_servo/driver_feetech_servo.hpp"
+#include "feetech_ros2_driver/feetech_ros2_driver.hpp"
 
 // Limit switch input pins -- Check gpio readall
 #define LIMIT_PIVOT_1 10
@@ -47,7 +47,7 @@
 using std::placeholders::_1;
 
 DriverFeetechServo::DriverFeetechServo()
-: Node("driver_feetech_servo"),
+: Node("feetech_ros2_driver"),
   mServoData(),
   portHandler(nullptr),
   packetHandler(nullptr),
@@ -204,17 +204,17 @@ void DriverFeetechServo::InitializeServos()
   // Open Serial Port
   mCommResult = portHandler->openPort();
   if (mCommResult == false) {
-    RCLCPP_ERROR(rclcpp::get_logger("driver_feetech_servo"), "Failed to open the port!");
+    RCLCPP_ERROR(this->get_logger(), "Failed to open the port!");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("driver_feetech_servo"), "Succeeded to open the port.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to open the port.");
   }
 
   // Set the baudrate of the serial port
   mCommResult = portHandler->setBaudRate(BAUDRATE);
   if (mCommResult == false) {
-    RCLCPP_ERROR(rclcpp::get_logger("driver_feetech_servo"), "Failed to set the baudrate!");
+    RCLCPP_ERROR(this->get_logger(), "Failed to set the baudrate!");
   } else {
-    RCLCPP_INFO(rclcpp::get_logger("driver_feetech_servo"), "Succeeded to set the baudrate.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set the baudrate.");
   }
 
   // add all the servos and populate data

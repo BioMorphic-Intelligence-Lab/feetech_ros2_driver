@@ -80,6 +80,7 @@ public:
     int limit_switch_pin;
     int continuous_position;
     int home_position;
+    float gear_ratio;
     HomingMode homing_mode;
     ControlMode control_mode;
 
@@ -91,6 +92,7 @@ public:
       int limit_switch_pin = 0,
       int continuous_position = 0,
       int home_position = 0,
+      float gear_ratio = 1.0,
       HomingMode homing_mode = LOAD_BASED, 
       ControlMode control_mode = POSITION_MODE)
         : id(id), 
@@ -100,6 +102,7 @@ public:
         limit_switch_pin(limit_switch_pin),
         continuous_position(continuous_position),
         home_position(home_position),
+        gear_ratio(gear_ratio),
         homing_mode(homing_mode),
         control_mode(control_mode) {}
   };
@@ -163,7 +166,7 @@ private:
   // ??
   uint8_t mErrorCode;
   int mCommResult;
-  const int mHomePositionIncrement;
+  const int mHomeVelocity;
   const int mCurrentThreshold;
   int mNodeFrequency;
   rclcpp::TimerBase::SharedPtr mTimer;

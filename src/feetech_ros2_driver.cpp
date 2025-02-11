@@ -54,7 +54,7 @@ DriverFeetechServo::DriverFeetechServo()
   packetHandler(nullptr),
   mErrorCode(0),
   mCommResult(0),
-  mHomePositionIncrement(100),
+  mHomeVelocity(10),
   mCurrentThreshold(100),
   mNodeFrequency(0)
 {
@@ -155,20 +155,32 @@ void DriverFeetechServo::HomeAll()
 
 void DriverFeetechServo::HomeSingleServo(const int id)
 {
+  // Logging statements
   RCLCPP_INFO(this->get_logger(), "Homing servo %d", id);
-  RCLCPP_INFO(this->get_logger(), "mHomePositionIncrement: %d", mHomePositionIncrement);
+  RCLCPP_INFO(this->get_logger(), "mHomeVelocity: %d", mHomeVelocity);
+
+  // Check servo mode and set to velocity if in position mode
+  if (mServoData.servo_map[id].mode==POSITION_MODE)
+  {
+    RCLCPP_INFO(this->get_logger(), "Homing mode is POSITION_MODE, switching to velocity");
+    setAllMode(VELOCITY_MODE);
+  }
+
+  // Switch-based homing -- TO DO: IMPLEMENT load based protection
   if (mServoData.servo_map[id].homing_mode==SWITCH_BASED)
   {
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH) // Limit switch is pressed
     {
       RCLCPP_INFO(this->get_logger(), "Limit switch is pressed");
+      
       // Move servo until limit switch is not pressed
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
       {
         getSinglePresentPosition(id);
-        setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
+        setVelocityReference(id, -mHomeVelocity);
         sleep(1);
       }
+      setVelocityReference(id, 0); // Stop the servo
     }
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW) // Limit switch is not pressed
     {
@@ -177,13 +189,17 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
-        setPositionReference(id, mServoData.servo_map[id].position-mHomePositionIncrement);
+        setVelocityReference(id, mHomeVelocity);
         sleep(1);
       }
+      setVelocityReference(id, 0); // Stop the servo
       getSinglePresentPosition(id);
+
       mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
     }
   }
+
+  // Load-based homing -- TO DO: IMPLEMENT
   else if (mServoData.servo_map[id].homing_mode==LOAD_BASED)
   {
     // Read present current and save
@@ -230,22 +246,24 @@ void DriverFeetechServo::InitializeServos()
   // add all the servos and populate data
   mServoData.AddServo(ServoState(
     this->get_parameter("pivot_id").as_int(), 
-    0, 
-    0, 
-    0, 
+    0,                // Position
+    0,                // Velocity
+    0,                // Current
     this->get_parameter("limit_pivot").as_int(), 
-    0, 
-    0, 
+    0,                // Continuous position
+    0,                // Home position
+    4.0,              // Gear ratio
     SWITCH_BASED, 
     POSITION_MODE));
   mServoData.AddServo(ServoState(
     this->get_parameter("shoulder_id").as_int(), 
-    0, 
-    0, 
-    0, 
+    0,                // Position
+    0,                // Velocity
+    0,                // Current
     this->get_parameter("limit_shoulder").as_int(), 
-    0, 
-    0, 
+    0,                // Continuous position
+    0,                // Home position
+    4.0,              // Gear ratio
     SWITCH_BASED, 
     POSITION_MODE));
   getAllPresentPositions();
@@ -256,13 +274,10 @@ void DriverFeetechServo::InitializeServos()
   setAllEnable(ENABLED);
 
   // home the servos
-  setAllMode(POSITION_MODE);
+  setAllMode(VELOCITY_MODE);
   for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
     HomeSingleServo(id);
   }
-
-  // set all servos to velocity mode
-  setAllMode(VELOCITY_MODE);
 };
 
 /* Get present position for servo ID and set on servo data struct

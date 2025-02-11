@@ -82,6 +82,7 @@ public:
     int continuous_position;
     int home_position;
     float gear_ratio;
+    float rad_per_tick;
     HomingMode homing_mode;
     ControlMode control_mode;
 
@@ -105,7 +106,9 @@ public:
         home_position(home_position),
         gear_ratio(gear_ratio),
         homing_mode(homing_mode),
-        control_mode(control_mode) {}
+        control_mode(control_mode) {
+          rad_per_tick = 2*M_PI/4096/gear_ratio;
+        }
   };
 
   // Define struct for saving state of all servos
@@ -170,6 +173,7 @@ private:
   uint8_t mErrorCode;
   int mCommResult;
   const int mHomeVelocity;
+  const int mFastHomingMultiplier;
   const int mCurrentThreshold;
   int mNodeFrequency;
   rclcpp::TimerBase::SharedPtr mTimer;

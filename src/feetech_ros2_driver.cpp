@@ -55,6 +55,7 @@ DriverFeetechServo::DriverFeetechServo()
   mErrorCode(0),
   mCommResult(0),
   mHomeVelocity(1),
+  mFastHomingMultiplier(3),
   mCurrentThreshold(100),
   mNodeFrequency(0)
 {
@@ -193,9 +194,15 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
-        result = setVelocityReference(id, -mHomeVelocity);
+        result = setVelocityReference(id, -mFastHomingMultiplier*mHomeVelocity);
         if (result==-1){break;}
-
+        sleep(1);
+      }
+      while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
+      {
+        getSinglePresentPosition(id);
+        result = setVelocityReference(id, mHomeVelocity);
+        if (result==-1){break;}
         sleep(1);
       }
       setVelocityReference(id, 0); // Stop the servo
@@ -432,7 +439,7 @@ int DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
     RCLCPP_ERROR(this->get_logger(), "Failed to set Position Control Mode for ID %d. Error code %i", id, mErrorCode);
     return -1;
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set control mode to %d.", mode);
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set control mode of ID %d to %d.", id, mode);
     mServoData.servo_map[id].control_mode = mode;
     return 0;
   }
@@ -468,7 +475,7 @@ int DriverFeetechServo::setPositionReference(const int id, const int &reference)
     RCLCPP_ERROR(this->get_logger(), "Failed to set position reference for ID %d. Error code %i", id, mErrorCode);
     return -1;
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set position reference.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set position reference for ID %d to %d ticks.", id, reference);
     return 0;
   }
 };
@@ -495,7 +502,7 @@ int DriverFeetechServo::setVelocityReference(const int id, const int &reference)
     RCLCPP_ERROR(this->get_logger(), "Failed to set velocity reference for ID %d. Error code %i", id, mErrorCode);
     return -1;
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set velocity reference.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set velocity reference of ID %d to %d ticks/s.", id, reference);
     return 0;
   }
 };
@@ -515,7 +522,7 @@ int DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enable
     RCLCPP_ERROR(this->get_logger(), "Failed to set torque enable for ID %d. Error code %i", id, mErrorCode);
     return -1;
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set torque enable.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set torque enable of ID %d to %i.", id, enable);
     return 0;
   }
 }

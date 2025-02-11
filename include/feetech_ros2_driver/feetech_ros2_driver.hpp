@@ -31,6 +31,7 @@
 #define ADDR_GOAL_SPEED 46
 #define ADDR_PRESENT_SPEED 58
 #define ADDR_PRESENT_CURRENT 69
+#define ADDR_PRESENT_VOLTAGE 62 // [0.1V]
 
 // Controller gains
 #define ADDR_POSITION_P 21

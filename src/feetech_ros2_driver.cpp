@@ -258,6 +258,7 @@ void DriverFeetechServo::InitializeServos()
   getAllPresentPositions();
   getAllPresentVelocities();
   getAllPresentCurrents();
+  getAllPresentVoltages();
 
   // Set all servos to torque enable
   setAllEnable(ENABLED);
@@ -294,7 +295,6 @@ void DriverFeetechServo::getSinglePresentPosition(const int id)
 
 oid DriverFeetechServo::getSinglePresentVelocity(const int id)
 {
- 
   uint16_t data;
   // Read Present Velocity (length : 2 bytes)
   mCommResult = packetHandler->read2ByteTxRx(
@@ -324,14 +324,21 @@ oid DriverFeetechServo::getSinglePresentVelocity(const int id)
 
 void DriverFeetechServo::getSinglePresentCurrent(const int id)
 {
+  uint16_t data;
   // Read present current (length: 2 bytes)
   mCommResult = packetHandler->read2ByteTxRx(
     portHandler,
     (uint8_t) mServoData.servo_map[id].id,
     ADDR_PRESENT_CURRENT,
-    reinterpret_cast<uint16_t *>(&mServoData.servo_map[id].current),
+    &data,
     &mErrorCode
   );
+
+  // Check and convert sign
+  int signedValue = data & ~0x8000;
+  if (data & 0x8000)
+      signedValue = -signedValue;
+  mServoData.servo_map[id].current = signedValue;
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present current. Error code %i", mErrorCode);
@@ -342,7 +349,29 @@ void DriverFeetechServo::getSinglePresentCurrent(const int id)
     mServoData.servo_map[id].current*6.5);
   }
 
-}
+};
+
+void DriverFeetechServo::getSinglePresentVoltage(const int id)
+{
+  // Read present voltage (length: 1 byte)
+  uint8_t data;
+  mCommResult = packetHandler->read1ByteTxRx(
+    portHandler,
+    (uint8_t) mServoData.servo_map[id].id,
+    ADDR_PRESENT_VOLTAGE,
+    &data,
+    &mErrorCode
+  );
+
+  if (mCommResult != COMM_SUCCESS) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to get present voltage. Error code %i", mErrorCode);
+  } 
+  else {
+    RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present voltage: %f V]",
+    mServoData.servo_map[id].id,
+    data/10.0);
+  }
+};
 
 void DriverFeetechServo::getAllPresentPositions()
 {
@@ -362,6 +391,13 @@ void DriverFeetechServo::getAllPresentCurrents()
 {
   for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
       getSinglePresentCurrent(id);
+  }
+};
+
+void DriverFeetechServo::getAllPresentVoltages()
+{
+  for (auto& [id, servo] : mServoData.servo_map) {
+    getSinglePresentVoltage(id);
   }
 };
 

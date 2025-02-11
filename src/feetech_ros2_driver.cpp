@@ -54,17 +54,17 @@ DriverFeetechServo::DriverFeetechServo()
   packetHandler(nullptr),
   mErrorCode(0),
   mCommResult(0),
-  mHomeVelocity(10),
+  mHomeVelocity(1),
   mCurrentThreshold(100),
   mNodeFrequency(0)
 {
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
 
   // parameter
-  this->declare_parameter("pivot_id",1);
+  this->declare_parameter("pivot_id",12);
   this->declare_parameter("shoulder_id",11);
   this->declare_parameter("elbow_id",3);
-  this->declare_parameter("limit_pivot", 4);
+  this->declare_parameter("limit_pivot", 10);
   this->declare_parameter("limit_shoulder", 3);
 
   this->declare_parameter("frequency", 20);
@@ -160,7 +160,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
   RCLCPP_INFO(this->get_logger(), "mHomeVelocity: %d", mHomeVelocity);
 
   // Check servo mode and set to velocity if in position mode
-  if (mServoData.servo_map[id].mode==POSITION_MODE)
+  if (mServoData.servo_map[id].control_mode==POSITION_MODE)
   {
     RCLCPP_INFO(this->get_logger(), "Homing mode is POSITION_MODE, switching to velocity");
     setAllMode(VELOCITY_MODE);
@@ -177,7 +177,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
       {
         getSinglePresentPosition(id);
-        setVelocityReference(id, -mHomeVelocity);
+        setVelocityReference(id, mHomeVelocity);
         sleep(1);
       }
       setVelocityReference(id, 0); // Stop the servo
@@ -189,7 +189,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
-        setVelocityReference(id, mHomeVelocity);
+        setVelocityReference(id, -mHomeVelocity);
         sleep(1);
       }
       setVelocityReference(id, 0); // Stop the servo
@@ -208,7 +208,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
     while (mServoData.servo_map[id].current-baseline_current < mCurrentThreshold)
     {
       getSinglePresentPosition(id);
-      setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
+      setVelocityReference(id, -mHomeVelocity);
       sleep(1);
     }
     getSinglePresentPosition(id);
@@ -250,17 +250,6 @@ void DriverFeetechServo::InitializeServos()
     0,                // Velocity
     0,                // Current
     this->get_parameter("limit_pivot").as_int(), 
-    0,                // Continuous position
-    0,                // Home position
-    4.0,              // Gear ratio
-    SWITCH_BASED, 
-    POSITION_MODE));
-  mServoData.AddServo(ServoState(
-    this->get_parameter("shoulder_id").as_int(), 
-    0,                // Position
-    0,                // Velocity
-    0,                // Current
-    this->get_parameter("limit_shoulder").as_int(), 
     0,                // Continuous position
     0,                // Home position
     4.0,              // Gear ratio
@@ -393,7 +382,12 @@ void DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
  */
 void DriverFeetechServo::setAllMode(const ControlMode &mode)
 {
-  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
+  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference\
+    // If setting to velocity mode, make sure reference velocity is first set to zero
+    if (mode==VELOCITY_MODE)
+    {
+      setVelocityReference(id, 0);
+    }
     setSingleMode(id, mode);
   }
 };

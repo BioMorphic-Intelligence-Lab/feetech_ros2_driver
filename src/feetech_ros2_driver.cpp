@@ -201,6 +201,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
  */
 void DriverFeetechServo::InitializeServos()
 {
+  RCLCPP_INFO(this->get_logger(), "Initializing servos on "+DEVICE_NAME+" at "+std::to_string(BAUDRATE)+" baudrate");
   // Set PortHandler and PacketHandler
   portHandler = dynamixel::PortHandler::getPortHandler(DEVICE_NAME);
   packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);

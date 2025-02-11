@@ -44,7 +44,7 @@
 
 // Default setting
 #define BAUDRATE 1000000  // Servo Baudrate
-#define DEVICE_NAME "/dev/ttyUSB1"  // [Linux]: "/dev/ttyUSB*"
+#define DEVICE_NAME "/dev/ttyUSB0"  // [Linux]: "/dev/ttyUSB*"
 
 // Modes
 #define TORQUE_ENABLE 1

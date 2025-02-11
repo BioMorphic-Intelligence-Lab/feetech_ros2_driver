@@ -54,7 +54,7 @@ DriverFeetechServo::DriverFeetechServo()
   packetHandler(nullptr),
   mErrorCode(0),
   mCommResult(0),
-  mHomePositionIncrement(10),
+  mHomePositionIncrement(100),
   mCurrentThreshold(100),
   mNodeFrequency(0)
 {
@@ -156,6 +156,7 @@ void DriverFeetechServo::HomeAll()
 void DriverFeetechServo::HomeSingleServo(const int id)
 {
   RCLCPP_INFO(this->get_logger(), "Homing servo %d", id);
+  RCLCPP_INFO(this->get_logger(), "mHomePositionIncrement: %d", mHomePositionIncrement);
   if (mServoData.servo_map[id].homing_mode==SWITCH_BASED)
   {
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH) // Limit switch is pressed
@@ -204,7 +205,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
  */
 void DriverFeetechServo::InitializeServos()
 {
-  std::string message = "Initializing servos on "+std::to_string(DEVICE_NAME)+" at "+std::to_string(BAUDRATE)+" baudrate";
+  std::string message = "Initializing servos on "+std::string(DEVICE_NAME)+" at "+std::to_string(BAUDRATE)+" baudrate";
   RCLCPP_INFO(this->get_logger(), message.c_str());
   // Set PortHandler and PacketHandler
   portHandler = dynamixel::PortHandler::getPortHandler(DEVICE_NAME);

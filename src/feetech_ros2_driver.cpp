@@ -62,10 +62,10 @@ DriverFeetechServo::DriverFeetechServo()
 
   // parameter
   this->declare_parameter("pivot_id",1);
-  this->declare_parameter("shoulder_id",2);
+  this->declare_parameter("shoulder_id",11);
   this->declare_parameter("elbow_id",3);
-  this->declare_parameter("limit_pivot", 10);
-  this->declare_parameter("limit_shoulder", 6);
+  this->declare_parameter("limit_pivot", 4);
+  this->declare_parameter("limit_shoulder", 3);
 
   this->declare_parameter("frequency", 20);
 
@@ -155,26 +155,29 @@ void DriverFeetechServo::HomeAll()
 
 void DriverFeetechServo::HomeSingleServo(const int id)
 {
+  RCLCPP_INFO(this->get_logger(), "Homing servo %d", id);
   if (mServoData.servo_map[id].homing_mode==SWITCH_BASED)
   {
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH) // Limit switch is pressed
     {
+      RCLCPP_INFO(this->get_logger(), "Limit switch is pressed");
       // Move servo until limit switch is not pressed
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
       {
         getSinglePresentPosition(id);
         setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
-        sleep(1000);
+        sleep(1);
       }
     }
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW) // Limit switch is not pressed
     {
+      RCLCPP_INFO(this->get_logger(), "Limit switch is not pressed");
       // Move servo until limit switch is pressed
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
         setPositionReference(id, mServoData.servo_map[id].position-mHomePositionIncrement);
-        sleep(1000);
+        sleep(1);
       }
       getSinglePresentPosition(id);
       mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
@@ -189,7 +192,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
     {
       getSinglePresentPosition(id);
       setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
-      sleep(1000);
+      sleep(1);
     }
     getSinglePresentPosition(id);
     mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
@@ -201,7 +204,8 @@ void DriverFeetechServo::HomeSingleServo(const int id)
  */
 void DriverFeetechServo::InitializeServos()
 {
-  RCLCPP_INFO(this->get_logger(), "Initializing servos on "+DEVICE_NAME+" at "+std::to_string(BAUDRATE)+" baudrate");
+  std::string message = "Initializing servos on "+std::to_string(DEVICE_NAME)+" at "+std::to_string(BAUDRATE)+" baudrate";
+  RCLCPP_INFO(this->get_logger(), message.c_str());
   // Set PortHandler and PacketHandler
   portHandler = dynamixel::PortHandler::getPortHandler(DEVICE_NAME);
   packetHandler = dynamixel::PacketHandler::getPacketHandler(PROTOCOL_VERSION);

@@ -256,6 +256,7 @@ void DriverFeetechServo::InitializeServos()
   setAllEnable(ENABLED);
 
   // home the servos
+  setAllMode(POSITION_MODE);
   for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
     HomeSingleServo(id);
   }

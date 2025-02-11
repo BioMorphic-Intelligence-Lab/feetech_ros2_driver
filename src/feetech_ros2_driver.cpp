@@ -62,8 +62,8 @@ DriverFeetechServo::DriverFeetechServo()
 
   // parameter
   this->declare_parameter("pivot_id",02);
-  this->declare_parameter("shoulder_id",11);
-  this->declare_parameter("elbow_id",3);
+  this->declare_parameter("shoulder_id",99);
+  this->declare_parameter("elbow_id",98);
   this->declare_parameter("limit_pivot", 10);
   this->declare_parameter("limit_shoulder", 3);
 
@@ -292,20 +292,29 @@ void DriverFeetechServo::getSinglePresentPosition(const int id)
   }
 };
 
-void DriverFeetechServo::getSinglePresentVelocity(const int id)
+oid DriverFeetechServo::getSinglePresentVelocity(const int id)
 {
-  // Read Present Position (length : 4 bytes) and Convert uint32 -> int32
+ 
+  uint16_t data;
+  // Read Present Velocity (length : 2 bytes)
   mCommResult = packetHandler->read2ByteTxRx(
     portHandler,
     (uint8_t) mServoData.servo_map[id].id,
     ADDR_PRESENT_SPEED,
-    reinterpret_cast<uint16_t *>(&mServoData.servo_map[id].velocity),
+    &data,
     &mErrorCode
   );
-
+  
+  // Check and convert sign
+  int signedValue = data & ~0x8000;
+  if (data & 0x8000)
+      signedValue = -signedValue;
+  mServoData.servo_map[id].velocity = signedValue;
+  
+  // Error handling
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present velocity. Error code %i", mErrorCode);
-  } 
+  }
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present velocity: %d ticks/s]",
     mServoData.servo_map[id].id,
@@ -411,20 +420,29 @@ void DriverFeetechServo::setPositionReference(const int id, const int &reference
 
 void DriverFeetechServo::setVelocityReference(const int id, const int &reference)
 {
+  // Handle sign
+  uint16_t ref = abs(reference);
+  if (reference < 0) {
+    ref = 0x8000 | ref;
+  }
+  
+  // Write to servo
   mCommResult = packetHandler->write2ByteTxRx(
     portHandler,
     id,
     ADDR_GOAL_SPEED,
-    reference,
+    ref,
     &mErrorCode
   );
-
+  
+  // Error handling
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to set velocity reference. Error code %i", mErrorCode);
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set velocity reference.");
   }
-}
+};
+ 
 
 void DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enable)
 {

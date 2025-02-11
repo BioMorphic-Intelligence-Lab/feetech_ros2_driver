@@ -140,22 +140,24 @@ private:
   void referenceServoVelocityCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
 
   // servo data getters
-  void getSinglePresentPosition(const int id);
-  void getSinglePresentVelocity(const int id);
-  void getSinglePresentCurrent(const int id);
+  int getSinglePresentPosition(const int id);
+  int getSinglePresentVelocity(const int id);
+  int getSinglePresentCurrent(const int id);
+  int getSinglePresentVoltage(const int id);
   void getAllPresentPositions();
   void getAllPresentVelocities();
   void getAllPresentCurrents();
+  void getAllPresentVoltages();
 
   // general servo data setters
-  void setSingleMode(const int id, const ControlMode &mode);
+  int setSingleMode(const int id, const ControlMode &mode);
   void setAllMode(const ControlMode &mode);
 
   // individual servo data setters
-  void setSingleEnable(const int id, const TorqueEnable &enable);
+  int setSingleEnable(const int id, const TorqueEnable &enable);
   void setAllEnable(const TorqueEnable &enable);
-  void setPositionReference(const int id, const int &reference);
-  void setVelocityReference(const int id, const int &reference);
+  int setPositionReference(const int id, const int &reference);
+  int setVelocityReference(const int id, const int &reference);
 
   // publish and subscribe functions
   void PublishServoData();

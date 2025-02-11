@@ -174,10 +174,12 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       RCLCPP_INFO(this->get_logger(), "Limit switch is pressed");
       
       // Move servo until limit switch is not pressed
+      int result;
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
       {
         getSinglePresentPosition(id);
-        setVelocityReference(id, mHomeVelocity);
+        result = setVelocityReference(id, mHomeVelocity);
+        if (result==-1){break;}
         sleep(1);
       }
       setVelocityReference(id, 0); // Stop the servo
@@ -186,10 +188,13 @@ void DriverFeetechServo::HomeSingleServo(const int id)
     {
       RCLCPP_INFO(this->get_logger(), "Limit switch is not pressed");
       // Move servo until limit switch is pressed
+      int result;
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
-        setVelocityReference(id, -mHomeVelocity);
+        result = setVelocityReference(id, -mHomeVelocity);
+        if (result==-1){break;}
+
         sleep(1);
       }
       setVelocityReference(id, 0); // Stop the servo
@@ -272,7 +277,7 @@ void DriverFeetechServo::InitializeServos()
 
 /* Get present position for servo ID and set on servo data struct
 */
-void DriverFeetechServo::getSinglePresentPosition(const int id)
+int DriverFeetechServo::getSinglePresentPosition(const int id)
 {
   // Read Present Position (length : 4 bytes) and Convert uint32 -> int32
   mCommResult = packetHandler->read2ByteTxRx(
@@ -285,15 +290,17 @@ void DriverFeetechServo::getSinglePresentPosition(const int id)
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present position. Error code %i", mErrorCode);
+    return -1;
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present position: %d ticks]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].position);
+    return 0;
   }
 };
 
-oid DriverFeetechServo::getSinglePresentVelocity(const int id)
+int DriverFeetechServo::getSinglePresentVelocity(const int id)
 {
   uint16_t data;
   // Read Present Velocity (length : 2 bytes)
@@ -314,15 +321,17 @@ oid DriverFeetechServo::getSinglePresentVelocity(const int id)
   // Error handling
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present velocity. Error code %i", mErrorCode);
+    return -1;
   }
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present velocity: %d ticks/s]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].velocity);
+    return 0;
   }
 };
 
-void DriverFeetechServo::getSinglePresentCurrent(const int id)
+int DriverFeetechServo::getSinglePresentCurrent(const int id)
 {
   uint16_t data;
   // Read present current (length: 2 bytes)
@@ -342,16 +351,18 @@ void DriverFeetechServo::getSinglePresentCurrent(const int id)
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present current. Error code %i", mErrorCode);
+    return -1;
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present current: %f mA]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].current*6.5);
+    return 0;
   }
 
 };
 
-void DriverFeetechServo::getSinglePresentVoltage(const int id)
+int DriverFeetechServo::getSinglePresentVoltage(const int id)
 {
   // Read present voltage (length: 1 byte)
   uint8_t data;
@@ -365,11 +376,13 @@ void DriverFeetechServo::getSinglePresentVoltage(const int id)
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present voltage. Error code %i", mErrorCode);
+    return -1;
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present voltage: %f V]",
     mServoData.servo_map[id].id,
     data/10.0);
+    return 0;
   }
 };
 
@@ -401,7 +414,7 @@ void DriverFeetechServo::getAllPresentVoltages()
   }
 };
 
-void DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
+int DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
 {
   mServoData.servo_map[id].control_mode = mode;
   // Set all servos to position mode
@@ -415,9 +428,11 @@ void DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to set Position Control Mode.Error code %i", mErrorCode);
+    return -1;
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set control mode to %d.", mode);
     mServoData.servo_map[id].control_mode = mode;
+    return 0;
   }
 }
 
@@ -437,7 +452,7 @@ void DriverFeetechServo::setAllMode(const ControlMode &mode)
   }
 };
 
-void DriverFeetechServo::setPositionReference(const int id, const int &reference)
+int DriverFeetechServo::setPositionReference(const int id, const int &reference)
 {
   mCommResult = packetHandler->write2ByteTxRx(
     portHandler,
@@ -449,12 +464,14 @@ void DriverFeetechServo::setPositionReference(const int id, const int &reference
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to set position reference. Error code %i", mErrorCode);
+    return -1;
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set position reference.");
+    return 0;
   }
 };
 
-void DriverFeetechServo::setVelocityReference(const int id, const int &reference)
+int DriverFeetechServo::setVelocityReference(const int id, const int &reference)
 {
   // Handle sign
   uint16_t ref = abs(reference);
@@ -474,13 +491,15 @@ void DriverFeetechServo::setVelocityReference(const int id, const int &reference
   // Error handling
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to set velocity reference. Error code %i", mErrorCode);
+    return -1;
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set velocity reference.");
+    return 0;
   }
 };
  
 
-void DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enable)
+int DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enable)
 {
   mCommResult = packetHandler->write1ByteTxRx(
     portHandler,
@@ -492,8 +511,10 @@ void DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enabl
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to set torque enable. Error code %i", mErrorCode);
+    return -1;
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set torque enable.");
+    return 0;
   }
 }
 

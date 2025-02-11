@@ -28,6 +28,7 @@
 *******************************************************************************/
 
 #include <cstdio>
+#include <stdlib.h>     //for using the function sleep
 #include <memory>
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <wiringPi.h>
@@ -163,6 +164,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       {
         getSinglePresentPosition(id);
         setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
+        sleep(1000);
       }
     }
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW) // Limit switch is not pressed
@@ -172,6 +174,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       {
         getSinglePresentPosition(id);
         setPositionReference(id, mServoData.servo_map[id].position-mHomePositionIncrement);
+        sleep(1000);
       }
       getSinglePresentPosition(id);
       mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
@@ -186,6 +189,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
     {
       getSinglePresentPosition(id);
       setPositionReference(id, mServoData.servo_map[id].position+mHomePositionIncrement);
+      sleep(1000);
     }
     getSinglePresentPosition(id);
     mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
@@ -237,16 +241,6 @@ void DriverFeetechServo::InitializeServos()
     0, 
     0, 
     SWITCH_BASED, 
-    POSITION_MODE));
-  mServoData.AddServo(ServoState(
-    this->get_parameter("elbow_id").as_int(), 
-    0, 
-    0, 
-    0, 
-    0, 
-    0, 
-    0, 
-    LOAD_BASED, 
     POSITION_MODE));
   getAllPresentPositions();
   getAllPresentVelocities();
@@ -320,13 +314,14 @@ void DriverFeetechServo::getSinglePresentCurrent(const int id)
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to get present current. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to get present current. Error code %i", mErrorCode);
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present current: %f mA]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].current*6.5);
   }
+
 }
 
 void DriverFeetechServo::getAllPresentPositions()

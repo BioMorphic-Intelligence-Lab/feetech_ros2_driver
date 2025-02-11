@@ -61,7 +61,7 @@ DriverFeetechServo::DriverFeetechServo()
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
 
   // parameter
-  this->declare_parameter("pivot_id",12);
+  this->declare_parameter("pivot_id",02);
   this->declare_parameter("shoulder_id",11);
   this->declare_parameter("elbow_id",3);
   this->declare_parameter("limit_pivot", 10);
@@ -283,7 +283,7 @@ void DriverFeetechServo::getSinglePresentPosition(const int id)
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to get present position. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to get present position. Error code %i", mErrorCode);
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present position: %d ticks]",
@@ -304,7 +304,7 @@ void DriverFeetechServo::getSinglePresentVelocity(const int id)
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to get present velocity. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to get present velocity. Error code %i", mErrorCode);
   } 
   else {
     RCLCPP_INFO(this->get_logger(), "Get [ID: %d] [Present velocity: %d ticks/s]",
@@ -369,7 +369,7 @@ void DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set Position Control Mode.Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to set Position Control Mode.Error code %i", mErrorCode);
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set control mode to %d.", mode);
     mServoData.servo_map[id].control_mode = mode;
@@ -382,7 +382,7 @@ void DriverFeetechServo::setSingleMode(const int id, const ControlMode &mode)
  */
 void DriverFeetechServo::setAllMode(const ControlMode &mode)
 {
-  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference\
+  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
     // If setting to velocity mode, make sure reference velocity is first set to zero
     if (mode==VELOCITY_MODE)
     {
@@ -403,9 +403,9 @@ void DriverFeetechServo::setPositionReference(const int id, const int &reference
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set reference. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to set position reference. Error code %i", mErrorCode);
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set reference.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set position reference.");
   }
 };
 
@@ -420,9 +420,9 @@ void DriverFeetechServo::setVelocityReference(const int id, const int &reference
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set reference. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to set velocity reference. Error code %i", mErrorCode);
   } else {
-    RCLCPP_INFO(this->get_logger(), "Succeeded to set reference.");
+    RCLCPP_INFO(this->get_logger(), "Succeeded to set velocity reference.");
   }
 }
 
@@ -437,7 +437,7 @@ void DriverFeetechServo::setSingleEnable(const int id, const TorqueEnable &enabl
   );
 
   if (mCommResult != COMM_SUCCESS) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to set torque enable. Error code %c", mErrorCode);
+    RCLCPP_ERROR(this->get_logger(), "Failed to set torque enable. Error code %i", mErrorCode);
   } else {
     RCLCPP_INFO(this->get_logger(), "Succeeded to set torque enable.");
   }

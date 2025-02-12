@@ -45,7 +45,6 @@
 
 // Default setting
 #define BAUDRATE 1000000  // Servo Baudrate
-#define DEVICE_NAME "/dev/ttyUSB0"  // [Linux]: "/dev/ttyUSB*"
 
 // Modes
 #define TORQUE_ENABLE 1
@@ -78,9 +77,11 @@ public:
     int position;
     int velocity;
     int current;
+    int voltage;
     int limit_switch_pin;
     int continuous_position;
     int home_position;
+    int home_to_nominal;
     float gear_ratio;
     float rad_per_tick;
     HomingMode homing_mode;
@@ -91,9 +92,11 @@ public:
       int position = 0, 
       int velocity = 0, 
       int current = 0, 
+      int voltage = 0,
       int limit_switch_pin = 0,
       int continuous_position = 0,
       int home_position = 0,
+      int home_to_nominal = 0,
       float gear_ratio = 1.0,
       HomingMode homing_mode = LOAD_BASED, 
       ControlMode control_mode = POSITION_MODE)
@@ -101,9 +104,11 @@ public:
         position(position), 
         velocity(velocity), 
         current(current),
+        voltage(voltage),
         limit_switch_pin(limit_switch_pin),
         continuous_position(continuous_position),
         home_position(home_position),
+        home_to_nominal(home_to_nominal),
         gear_ratio(gear_ratio),
         homing_mode(homing_mode),
         control_mode(control_mode) {
@@ -164,6 +169,9 @@ private:
 
   // publish and subscribe functions
   void PublishServoData();
+
+  // Joint functions
+  void moveToRelativePosition(const int id, const float rel_position_rad);
   
   // Handlers
   dynamixel::PortHandler *portHandler;
@@ -172,10 +180,14 @@ private:
   // ??
   uint8_t mErrorCode;
   int mCommResult;
-  const int mHomeVelocity;
+  int mHomeVelocity;
+  std::string mDeviceName;
   const int mFastHomingMultiplier;
+  const double mMaxVelocity;
   const int mCurrentThreshold;
   int mNodeFrequency;
+  double mPositionPGain;
+  double mPositionDGain;
   rclcpp::TimerBase::SharedPtr mTimer;
 };
 

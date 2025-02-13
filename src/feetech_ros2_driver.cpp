@@ -57,8 +57,9 @@ DriverFeetechServo::DriverFeetechServo()
   mMaxVelocity(250.f),
   mCurrentThreshold(6.f),
   mNodeFrequency(0),
-  mPositionPGain(32.f),
-  mPositionDGain(16.f)
+  mPositionPGain(0.3f),
+  mPositionDGain(0.15f),
+  mPositionThreshold(20)
 {
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
 
@@ -105,6 +106,16 @@ DriverFeetechServo::DriverFeetechServo()
 
 DriverFeetechServo::~DriverFeetechServo()
 {
+  // set all velocities to zero to stop servo
+  // Without this the last set velocity will be maintained and the servo will not stop turning!
+  setAllMode(VELOCITY_MODE);
+  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
+    setVelocityReference(id, 0);
+  }
+
+  // Disable all servos
+  setAllEnable(DISABLED);
+  
   // Close port
   portHandler->closePort();
 }
@@ -116,8 +127,34 @@ void DriverFeetechServo::timerCallback()
   getAllPresentVelocities();
   getAllPresentCurrents();
 
+  tMoveToAbsolutePosition();
+
   // Publish current servo positions and velocities
   PublishServoData();
+}
+
+void DriverFeetechServo::tMoveToAbsolutePosition()
+{
+  int ticks_to_go = 0;
+  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
+    RCLCPP_DEBUG(this->get_logger(), "===== MOVE ABS POS ID %d =====", id);
+
+    // Calculate ticks to go
+    ticks_to_go = (int)((mServoData.servo_map[id].absolute_goal_position - 
+    mServoData.servo_map[id].absolute_current_position)*4096*mServoData.servo_map[id].gear_ratio/(2*M_PI));
+    RCLCPP_DEBUG(this->get_logger(), "Abs goal pos: %.2f, Abs curr pos: %.2f", mServoData.servo_map[id].absolute_goal_position, mServoData.servo_map[id].absolute_current_position);
+    RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
+    
+    // Calculate saturated velocity
+    int velocity = (int)std::max(std::min(mPositionPGain*ticks_to_go + mPositionDGain*mServoData.servo_map[id].velocity, mMaxVelocity), -mMaxVelocity);
+
+    // Write velocity
+    if (abs(ticks_to_go)<mPositionThreshold)
+    { RCLCPP_INFO(this->get_logger(), "Stopping servo %d", id);
+      setVelocityReference(id, 0);
+    }
+    else {setVelocityReference(id, velocity*mServoData.servo_map[id].gear_ratio);}
+  }
 }
 
 void DriverFeetechServo::PublishServoData()
@@ -137,15 +174,15 @@ void DriverFeetechServo::PublishServoData()
   current_servo_velocity_publisher_->publish(current_servo_velocity_msg);
 }
 
-/* Set reference position directly on servo
+/* Set reference position of the output in rad w.r.t. the home position
 */
 void DriverFeetechServo::referenceServoPositionCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
 {
-  // 
-  // Set reference position for all servos
-  setPositionReference(this->get_parameter("pivot_id").as_int(), msg->vector.x);
-  setPositionReference(this->get_parameter("shoulder_id").as_int(), msg->vector.y);
-  setPositionReference(this->get_parameter("elbow_id").as_int(), msg->vector.z);
+  RCLCPP_INFO(this->get_logger(), "Received reference position message");
+  // Set absolute goal position on servo object
+  mServoData.servo_map[this->get_parameter("pivot_id").as_int()].absolute_goal_position = msg->vector.x;
+  mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].absolute_goal_position = msg->vector.y;
+  mServoData.servo_map[this->get_parameter("elbow_id").as_int()].absolute_goal_position = msg->vector.z;
 }
 
 /* Set velocity reference directly on servo
@@ -272,6 +309,15 @@ void DriverFeetechServo::HomeSingleServo(const int id)
 
     moveToRelativePosition(id, mServoData.servo_map[id].home_to_nominal);
   }
+
+  else if (mServoData.servo_map[id].homing_mode==PRESET)
+  {
+      // Set the current position as the home position
+      getSinglePresentPosition(id);
+      mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
+      RCLCPP_INFO(this->get_logger(), "Set current position as home for %d", id);
+  }
+
   sleep(1); // Wait 1 second
 }
 
@@ -309,15 +355,16 @@ void DriverFeetechServo::InitializeServos()
     0,                // Position
     0,                // Velocity
     0,                // Current
-    0,               // Voltage   
+    0,                // Voltage   
     this->get_parameter("limit_pivot").as_int(), 
     0,                // Continuous position
     0,                // Home position
-    -1.5,                // Ticks from home position to nominal position
+    -1.5,             // Ticks from home position to nominal position
     4.0,              // Gear ratio
-    SWITCH_BASED, 
+    0.f,              // Absolute current position
+    0.f,              // Absolute goal position
+    PRESET, 
     POSITION_MODE));
-    /*
   mServoData.AddServo(ServoState(
     this->get_parameter("shoulder_id").as_int(), 
     0,                // Position
@@ -329,7 +376,9 @@ void DriverFeetechServo::InitializeServos()
     0,                // Home position
     -0.65,             // Ticks from home position to nominal position
     1.0,              // Gear ratio
-    SWITCH_BASED, 
+    0.f,              // Absolute current position
+    0.f,              // Absolute goal position
+    PRESET, 
     POSITION_MODE));
   mServoData.AddServo(ServoState(
     this->get_parameter("elbow_id").as_int(), 
@@ -342,8 +391,10 @@ void DriverFeetechServo::InitializeServos()
     0,                // Home position
     -1.8,                // RAD from home position to nominal position
     2.0,              // Gear ratio
-    LOAD_BASED, 
-    POSITION_MODE));*/
+    0.f,              // Absolute current position
+    0.f,              // Absolute goal position
+    PRESET, 
+    POSITION_MODE));
   getAllPresentPositions();
   getAllPresentVelocities();
   getAllPresentCurrents();
@@ -359,18 +410,25 @@ void DriverFeetechServo::InitializeServos()
   }
 };
 
-/* Get present position for servo ID and set on servo data struct
+/* Get present (homed) position for servo ID and set on servo data struct
 */
 int DriverFeetechServo::getSinglePresentPosition(const int id)
 {
-  // Read Present Position (length : 4 bytes) and Convert uint32 -> int32
+  // Read Present Position (length : 2 bytes) and Convert uint32 -> int32
+  uint16_t data;
   mCommResult = packetHandler->read2ByteTxRx(
     portHandler,
     (uint8_t) mServoData.servo_map[id].id,
     ADDR_PRESENT_POSITION,
-    reinterpret_cast<uint16_t *>(&mServoData.servo_map[id].position),
+    &data,
     &mErrorCode
   );
+  int homed_position = data-mServoData.servo_map[id].home_position;
+  if (homed_position<0)
+  {
+    homed_position = 4096+homed_position;
+  }
+  mServoData.servo_map[id].position = homed_position;
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present position for ID %d. Error code %i", id, mErrorCode);
@@ -473,8 +531,20 @@ int DriverFeetechServo::getSinglePresentVoltage(const int id)
 
 void DriverFeetechServo::getAllPresentPositions()
 {
+  int previous_position;
   for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
-      getSinglePresentPosition(id);
+      previous_position = mServoData.servo_map[id].position; // save the previous position
+      getSinglePresentPosition(id); // get the new position (homed)
+
+      int change_ticks;
+      if (mServoData.servo_map[id].position-previous_position>3500) 
+        {change_ticks = mServoData.servo_map[id].position-previous_position-4096;}
+      else if (mServoData.servo_map[id].position-previous_position<-3500)
+        {change_ticks = mServoData.servo_map[id].position-previous_position+4096;}
+      else {change_ticks = mServoData.servo_map[id].position-previous_position;}
+
+      // Calculate change in output to absolute current position and add to absolute current position
+      mServoData.servo_map[id].absolute_current_position += change_ticks*2*M_PI/4096/mServoData.servo_map[id].gear_ratio;
   }
 };
 
@@ -629,7 +699,7 @@ void DriverFeetechServo::moveToRelativePosition(const int id, const double rel_p
   RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
   RCLCPP_DEBUG(this->get_logger(), "abs ticks to go: %d", abs(ticks_to_go));
 
-  while(abs(ticks_to_go)>10)
+  while(abs(ticks_to_go)>mPositionThreshold)
   {
     RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
     getSinglePresentPosition(id);
@@ -652,8 +722,6 @@ void DriverFeetechServo::moveToRelativePosition(const int id, const double rel_p
   // Stop servo
   setVelocityReference(id, 0);
 }
-
-
 
 int main(int argc, char * argv[])
 {

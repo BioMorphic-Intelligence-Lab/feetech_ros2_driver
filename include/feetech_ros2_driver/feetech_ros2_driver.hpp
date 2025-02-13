@@ -57,7 +57,8 @@ enum ControlMode {
 
 enum HomingMode {
   LOAD_BASED = 0,   // Home based on load increase
-  SWITCH_BASED = 1  // Home based on limit switch
+  SWITCH_BASED = 1, // Home based on limit switch
+  PRESET = 2        // Home based on taking initial position as home
 };
 
 enum TorqueEnable {
@@ -84,6 +85,8 @@ public:
     double home_to_nominal;
     float gear_ratio;
     float rad_per_tick;
+    float absolute_current_position; // rad
+    float absolute_goal_position; // rad
     HomingMode homing_mode;
     ControlMode control_mode;
 
@@ -98,6 +101,8 @@ public:
       int home_position = 0,
       double home_to_nominal = 0,
       float gear_ratio = 1.0,
+      float absolute_current_position = 0.f,
+      float absolute_goal_position = 0.f,
       HomingMode homing_mode = LOAD_BASED, 
       ControlMode control_mode = POSITION_MODE)
         : id(id), 
@@ -110,6 +115,8 @@ public:
         home_position(home_position),
         home_to_nominal(home_to_nominal),
         gear_ratio(gear_ratio),
+        absolute_current_position(absolute_current_position),
+        absolute_goal_position(absolute_goal_position),
         homing_mode(homing_mode),
         control_mode(control_mode) {
           rad_per_tick = 2*M_PI/4096/gear_ratio;
@@ -172,6 +179,8 @@ private:
 
   // Joint functions
   void moveToRelativePosition(const int id, const double rel_position_rad);
+  void tMoveToAbsolutePosition(); // command all servos to move the the set absolute position goal via velocity mode
+  void moveToAbsolutePosition(const int id, const double abs_position_rad);
   
   // Handlers
   dynamixel::PortHandler *portHandler;
@@ -187,6 +196,7 @@ private:
   int mNodeFrequency;
   double mPositionPGain;
   double mPositionDGain;
+  int mPositionThreshold;
   rclcpp::TimerBase::SharedPtr mTimer;
 };
 

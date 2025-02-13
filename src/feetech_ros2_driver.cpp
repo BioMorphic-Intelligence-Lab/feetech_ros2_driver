@@ -78,6 +78,8 @@ DriverFeetechServo::DriverFeetechServo()
   this->declare_parameter("port", "/dev/ttyUSB0");
   mDeviceName = this->get_parameter("port").as_string();
 
+  this->declare_parameter("namespace", "servo");
+
   // QoS settings
   this->declare_parameter("qos_depth", 10);
   // int8_t qos_depth = 0;
@@ -87,13 +89,14 @@ DriverFeetechServo::DriverFeetechServo()
 
   // Subscriptions
   // Subscribe to topic to set mode and to topic to set reference (i.e. reference--> one messag for all servos)
-  reference_servo_position_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/servo/in/reference_position", 10, std::bind(&DriverFeetechServo::referenceServoPositionCallback, this, _1));
-  reference_servo_velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/servo/in/reference_velocity", 10, std::bind(&DriverFeetechServo::referenceServoVelocityCallback, this, _1));
+  mNamespace = this->get_parameter("namespace").as_string();
+  reference_servo_position_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/in/reference_position", 10, std::bind(&DriverFeetechServo::referenceServoPositionCallback, this, _1));
+  reference_servo_velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/in/reference_velocity", 10, std::bind(&DriverFeetechServo::referenceServoVelocityCallback, this, _1));
 
   // Publishers
   // Publish relevant information i.e. servo position (calculate in this node?), velocity, torque etc.
-  current_servo_position_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/servo/out/current_position", 10);
-  current_servo_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/servo/out/current_velocity", 10);
+  current_servo_position_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/out/current_position", 10);
+  current_servo_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/out/current_velocity", 10);
 
   // Initialize Servos
   InitializeServos();
@@ -150,7 +153,7 @@ void DriverFeetechServo::tMoveToAbsolutePosition()
 
     // Write velocity
     if (abs(ticks_to_go)<mPositionThreshold)
-    { RCLCPP_INFO(this->get_logger(), "Stopping servo %d", id);
+    { RCLCPP_DEBUG(this->get_logger(), "Stopping servo %d", id);
       setVelocityReference(id, 0);
     }
     else {setVelocityReference(id, velocity*mServoData.servo_map[id].gear_ratio);}

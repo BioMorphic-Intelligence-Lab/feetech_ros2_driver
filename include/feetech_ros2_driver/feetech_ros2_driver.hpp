@@ -197,6 +197,7 @@ private:
   double mPositionPGain;
   double mPositionDGain;
   int mPositionThreshold;
+  std::string mNamespace;
   rclcpp::TimerBase::SharedPtr mTimer;
 };
 

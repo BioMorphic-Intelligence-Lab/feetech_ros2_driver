@@ -81,7 +81,7 @@ public:
     int limit_switch_pin;
     int continuous_position;
     int home_position;
-    int home_to_nominal;
+    double home_to_nominal;
     float gear_ratio;
     float rad_per_tick;
     HomingMode homing_mode;
@@ -96,7 +96,7 @@ public:
       int limit_switch_pin = 0,
       int continuous_position = 0,
       int home_position = 0,
-      int home_to_nominal = 0,
+      double home_to_nominal = 0,
       float gear_ratio = 1.0,
       HomingMode homing_mode = LOAD_BASED, 
       ControlMode control_mode = POSITION_MODE)
@@ -171,7 +171,7 @@ private:
   void PublishServoData();
 
   // Joint functions
-  void moveToRelativePosition(const int id, const float rel_position_rad);
+  void moveToRelativePosition(const int id, const double rel_position_rad);
   
   // Handlers
   dynamixel::PortHandler *portHandler;
@@ -182,7 +182,6 @@ private:
   int mCommResult;
   int mHomeVelocity;
   std::string mDeviceName;
-  const int mFastHomingMultiplier;
   const double mMaxVelocity;
   const int mCurrentThreshold;
   int mNodeFrequency;

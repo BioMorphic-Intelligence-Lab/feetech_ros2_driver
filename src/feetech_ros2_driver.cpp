@@ -54,8 +54,7 @@ DriverFeetechServo::DriverFeetechServo()
   packetHandler(nullptr),
   mErrorCode(0),
   mCommResult(0),
-  mFastHomingMultiplier(5.f),
-  mMaxVelocity(150.f),
+  mMaxVelocity(250.f),
   mCurrentThreshold(6.f),
   mNodeFrequency(0),
   mPositionPGain(32.f),
@@ -211,7 +210,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==LOW)
       {
         getSinglePresentPosition(id);
-        result = setVelocityReference(id, mFastHomingMultiplier*mHomeVelocity);
+        result = setVelocityReference(id, mServoData.servo_map[id].gear_ratio*mHomeVelocity);
         if (result==-1){
           count++;
           getSinglePresentVoltage(id);
@@ -220,6 +219,8 @@ void DriverFeetechServo::HomeSingleServo(const int id)
           break;}}
         sleep(0.1);
       }
+
+      // Switch high
       RCLCPP_INFO(this->get_logger(), "Limit switch is pressed, slowly moving back");
       while(digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH)
       {
@@ -237,6 +238,8 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       getSinglePresentPosition(id);
       mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
       RCLCPP_INFO(this->get_logger(), "Homing for %d finished", id);
+
+      moveToRelativePosition(id, mServoData.servo_map[id].home_to_nominal);
     }
   }
 
@@ -247,7 +250,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
     // Read present current and save
     getSinglePresentCurrent(id);
     int baseline_current = mServoData.servo_map[id].current;
-    setVelocityReference(id, mHomeVelocity); // Set velocity once
+    setVelocityReference(id, mServoData.servo_map[id].gear_ratio*mHomeVelocity); // Set velocity once
 
     // While current below threshold (divide by 6.5 to convert to mA, threshold specified in mA)
     int result;
@@ -300,7 +303,7 @@ void DriverFeetechServo::InitializeServos()
   }
 
   // add all the servos and populate data
-  /*
+  
   mServoData.AddServo(ServoState(
     this->get_parameter("pivot_id").as_int(), 
     0,                // Position
@@ -310,10 +313,11 @@ void DriverFeetechServo::InitializeServos()
     this->get_parameter("limit_pivot").as_int(), 
     0,                // Continuous position
     0,                // Home position
-    -250,                // Ticks from home position to nominal position
-    2.0,              // Gear ratio
+    -1.5,                // Ticks from home position to nominal position
+    4.0,              // Gear ratio
     SWITCH_BASED, 
     POSITION_MODE));
+    /*
   mServoData.AddServo(ServoState(
     this->get_parameter("shoulder_id").as_int(), 
     0,                // Position
@@ -323,10 +327,10 @@ void DriverFeetechServo::InitializeServos()
     this->get_parameter("limit_shoulder").as_int(), 
     0,                // Continuous position
     0,                // Home position
-    -500,             // Ticks from home position to nominal position
+    -0.65,             // Ticks from home position to nominal position
     1.0,              // Gear ratio
     SWITCH_BASED, 
-    POSITION_MODE));*/
+    POSITION_MODE));
   mServoData.AddServo(ServoState(
     this->get_parameter("elbow_id").as_int(), 
     0,                // Position
@@ -336,10 +340,10 @@ void DriverFeetechServo::InitializeServos()
     -1,                // No limit switch
     0,                // Continuous position
     0,                // Home position
-    -0.5,                // RAD from home position to nominal position
+    -1.8,                // RAD from home position to nominal position
     2.0,              // Gear ratio
     LOAD_BASED, 
-    POSITION_MODE));
+    POSITION_MODE));*/
   getAllPresentPositions();
   getAllPresentVelocities();
   getAllPresentCurrents();
@@ -610,7 +614,7 @@ void DriverFeetechServo::setAllEnable(const TorqueEnable &enable)
  * @param id: ID of the servo
  * @param rel_position_rad: Relative position in radians
 */
-void DriverFeetechServo::moveToRelativePosition(const int id, const float rel_position_rad)
+void DriverFeetechServo::moveToRelativePosition(const int id, const double rel_position_rad)
 {
   // Get current position
   getSinglePresentPosition(id);
@@ -621,14 +625,23 @@ void DriverFeetechServo::moveToRelativePosition(const int id, const float rel_po
   int ticks_moved = 0;
   int velocity = 0;
 
-  RCLCPP_DEBUG(this->get_logger(), "Moving servo %d to relative position %f rad", id, rel_position_rad);
+  RCLCPP_DEBUG(this->get_logger(), "Moving servo %d to relative position %.3f rad", id, rel_position_rad);
+  RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
+  RCLCPP_DEBUG(this->get_logger(), "abs ticks to go: %d", abs(ticks_to_go));
 
-  while(abs(ticks_to_go)<10)
+  while(abs(ticks_to_go)>10)
   {
+    RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
     getSinglePresentPosition(id);
     current_position = mServoData.servo_map[id].position;
     // Calculate number of ticks moved
-    ticks_moved = previous_position - current_position;
+    ticks_moved = current_position - previous_position;
+
+    // Deal with under- and overflow (enables handling multiple servo rotations)
+    if (ticks_moved>3500) {ticks_moved=4096-ticks_moved;}
+    else if (ticks_moved<-3500) {ticks_moved=4096+ticks_moved;}
+    previous_position = current_position;
+
     // Get number of ticks to go
     ticks_to_go = ticks_to_go - ticks_moved;
     // Calculate saturated velocity
@@ -636,6 +649,8 @@ void DriverFeetechServo::moveToRelativePosition(const int id, const float rel_po
     // Write velocity
     setVelocityReference(id, velocity);
   }
+  // Stop servo
+  setVelocityReference(id, 0);
 }
 
 

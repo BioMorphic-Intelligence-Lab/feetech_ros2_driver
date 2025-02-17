@@ -87,6 +87,7 @@ public:
     float rad_per_tick;
     float absolute_current_position; // rad
     float absolute_goal_position; // rad
+    int ticks_to_go;
     HomingMode homing_mode;
     ControlMode control_mode;
 
@@ -103,6 +104,7 @@ public:
       float gear_ratio = 1.0,
       float absolute_current_position = 0.f,
       float absolute_goal_position = 0.f,
+      int ticks_to_go = 0,
       HomingMode homing_mode = LOAD_BASED, 
       ControlMode control_mode = POSITION_MODE)
         : id(id), 
@@ -117,6 +119,7 @@ public:
         gear_ratio(gear_ratio),
         absolute_current_position(absolute_current_position),
         absolute_goal_position(absolute_goal_position),
+        ticks_to_go(ticks_to_go),
         homing_mode(homing_mode),
         control_mode(control_mode) {
           rad_per_tick = 2*M_PI/4096/gear_ratio;
@@ -143,16 +146,16 @@ private:
   void timerCallback();
 
   // publishers
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr current_servo_position_publisher_;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr current_servo_velocity_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr current_servo_position_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr current_servo_velocity_publisher_;
 
   // subscribers
-  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr reference_servo_position_subscriber_;
-  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr reference_servo_velocity_subscriber_;
+  rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr reference_servo_position_subscriber_;
+  rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr reference_servo_velocity_subscriber_;
 
   // callbacks
-  void referenceServoPositionCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
-  void referenceServoVelocityCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
+  void referenceServoPositionCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
+  void referenceServoVelocityCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg);
 
   // servo data getters
   int getSinglePresentPosition(const int id);

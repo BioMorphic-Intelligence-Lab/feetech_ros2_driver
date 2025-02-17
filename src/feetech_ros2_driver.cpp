@@ -30,7 +30,7 @@
 #include <cstdio>
 #include <stdlib.h>     //for using the function sleep
 #include <memory>
-#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <wiringPi.h>
 
 #include "dynamixel_sdk/dynamixel_sdk.h"
@@ -64,11 +64,19 @@ DriverFeetechServo::DriverFeetechServo()
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
 
   // parameter
-  this->declare_parameter("pivot_id",02);
-  this->declare_parameter("shoulder_id",99);
-  this->declare_parameter("elbow_id",98);
-  this->declare_parameter("limit_pivot", 10);
-  this->declare_parameter("limit_shoulder", 3);
+  this->declare_parameter("pivot_1_id",02);
+  this->declare_parameter("shoulder_1_id",99);
+  this->declare_parameter("elbow_1_id",98);
+
+  this->declare_parameter("pivot_2_id",02);
+  this->declare_parameter("shoulder_2_id",99);
+  this->declare_parameter("elbow_2_id",98);
+
+  this->declare_parameter("limit_1_pivot", 10);
+  this->declare_parameter("limit_1_shoulder", 3);
+
+  this->declare_parameter("limit_2_pivot", 10);
+  this->declare_parameter("limit_2_shoulder", 3);
 
   this->declare_parameter("frequency", 20);
 
@@ -90,13 +98,13 @@ DriverFeetechServo::DriverFeetechServo()
   // Subscriptions
   // Subscribe to topic to set mode and to topic to set reference (i.e. reference--> one messag for all servos)
   mNamespace = this->get_parameter("namespace").as_string();
-  reference_servo_position_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/in/reference_position", 10, std::bind(&DriverFeetechServo::referenceServoPositionCallback, this, _1));
-  reference_servo_velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/in/reference_velocity", 10, std::bind(&DriverFeetechServo::referenceServoVelocityCallback, this, _1));
+  reference_servo_position_subscriber_ = this->create_subscription<geometry_msgs::msg::TwistStamped>("/"+mNamespace+"/in/reference_position", 10, std::bind(&DriverFeetechServo::referenceServoPositionCallback, this, _1));
+  reference_servo_velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::TwistStamped>("/"+mNamespace+"/in/reference_velocity", 10, std::bind(&DriverFeetechServo::referenceServoVelocityCallback, this, _1));
 
   // Publishers
   // Publish relevant information i.e. servo position (calculate in this node?), velocity, torque etc.
-  current_servo_position_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/out/current_position", 10);
-  current_servo_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/"+mNamespace+"/out/current_velocity", 10);
+  current_servo_position_publisher_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/"+mNamespace+"/out/current_position", 10);
+  current_servo_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::TwistStamped>("/"+mNamespace+"/out/current_velocity", 10);
 
   // Initialize Servos
   InitializeServos();
@@ -138,21 +146,20 @@ void DriverFeetechServo::timerCallback()
 
 void DriverFeetechServo::tMoveToAbsolutePosition()
 {
-  int ticks_to_go = 0;
   for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
     RCLCPP_DEBUG(this->get_logger(), "===== MOVE ABS POS ID %d =====", id);
 
     // Calculate ticks to go
-    ticks_to_go = (int)((mServoData.servo_map[id].absolute_goal_position - 
+    mServoData.servo_map[id].ticks_to_go = (int)((mServoData.servo_map[id].absolute_goal_position - 
     mServoData.servo_map[id].absolute_current_position)*4096*mServoData.servo_map[id].gear_ratio/(2*M_PI));
     RCLCPP_DEBUG(this->get_logger(), "Abs goal pos: %.2f, Abs curr pos: %.2f", mServoData.servo_map[id].absolute_goal_position, mServoData.servo_map[id].absolute_current_position);
-    RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", ticks_to_go);
+    RCLCPP_DEBUG(this->get_logger(), "Ticks to go: %d", mServoData.servo_map[id].ticks_to_go);
     
     // Calculate saturated velocity
-    int velocity = (int)std::max(std::min(mPositionPGain*ticks_to_go + mPositionDGain*mServoData.servo_map[id].velocity, mMaxVelocity), -mMaxVelocity);
+    int velocity = (int)std::max(std::min(mPositionPGain*mServoData.servo_map[id].ticks_to_go + mPositionDGain*mServoData.servo_map[id].velocity, mMaxVelocity), -mMaxVelocity);
 
     // Write velocity
-    if (abs(ticks_to_go)<mPositionThreshold)
+    if (abs(mServoData.servo_map[id].ticks_to_go)<mPositionThreshold)
     { RCLCPP_DEBUG(this->get_logger(), "Stopping servo %d", id);
       setVelocityReference(id, 0);
     }
@@ -163,15 +170,26 @@ void DriverFeetechServo::tMoveToAbsolutePosition()
 void DriverFeetechServo::PublishServoData()
 {
   // Publish current servo positions and velocities
-  auto current_servo_position_msg = geometry_msgs::msg::Vector3Stamped();
-  auto current_servo_velocity_msg = geometry_msgs::msg::Vector3Stamped();
-  current_servo_position_msg.vector.x = mServoData.servo_map[this->get_parameter("pivot_id").as_int()].position;
-  current_servo_position_msg.vector.y = mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].position;
-  current_servo_position_msg.vector.z = mServoData.servo_map[this->get_parameter("elbow_id").as_int()].position;
+  auto current_servo_position_msg = geometry_msgs::msg::TwistStamped();
+  auto current_servo_velocity_msg = geometry_msgs::msg::TwistStamped();
+  current_servo_position_msg.twist.linear.x = mServoData.servo_map[this->get_parameter("pivot_1_id").as_int()].position;
+  current_servo_position_msg.twist.linear.y = mServoData.servo_map[this->get_parameter("shoulder_1_id").as_int()].position;
+  current_servo_position_msg.twist.linear.z = mServoData.servo_map[this->get_parameter("elbow_1_id").as_int()].position;
 
-  current_servo_velocity_msg.vector.x = mServoData.servo_map[this->get_parameter("pivot_id").as_int()].velocity;
-  current_servo_velocity_msg.vector.y = mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].velocity;
-  current_servo_velocity_msg.vector.z = mServoData.servo_map[this->get_parameter("elbow_id").as_int()].velocity;
+  current_servo_velocity_msg.twist.linear.x = mServoData.servo_map[this->get_parameter("pivot_1_id").as_int()].velocity;
+  current_servo_velocity_msg.twist.linear.y = mServoData.servo_map[this->get_parameter("shoulder_1_id").as_int()].velocity;
+  current_servo_velocity_msg.twist.linear.z = mServoData.servo_map[this->get_parameter("elbow_1_id").as_int()].velocity;
+
+  current_servo_position_msg.twist.angular.x = mServoData.servo_map[this->get_parameter("pivot_2_id").as_int()].position;
+  current_servo_position_msg.twist.angular.y = mServoData.servo_map[this->get_parameter("shoulder_2_id").as_int()].position;
+  current_servo_position_msg.twist.angular.z = mServoData.servo_map[this->get_parameter("elbow_2_id").as_int()].position;
+
+  current_servo_velocity_msg.twist.angular.x = mServoData.servo_map[this->get_parameter("pivot_2_id").as_int()].velocity;
+  current_servo_velocity_msg.twist.angular.y = mServoData.servo_map[this->get_parameter("shoulder_2_id").as_int()].velocity;
+  current_servo_velocity_msg.twist.angular.z = mServoData.servo_map[this->get_parameter("elbow_2_id").as_int()].velocity;
+
+  current_servo_position_msg.header.stamp = this->now();
+  current_servo_velocity_msg.header.stamp = this->now();
 
   current_servo_position_publisher_->publish(current_servo_position_msg);
   current_servo_velocity_publisher_->publish(current_servo_velocity_msg);
@@ -179,23 +197,31 @@ void DriverFeetechServo::PublishServoData()
 
 /* Set reference position of the output in rad w.r.t. the home position
 */
-void DriverFeetechServo::referenceServoPositionCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+void DriverFeetechServo::referenceServoPositionCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "Received reference position message");
   // Set absolute goal position on servo object
-  mServoData.servo_map[this->get_parameter("pivot_id").as_int()].absolute_goal_position = msg->vector.x;
-  mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].absolute_goal_position = msg->vector.y;
-  mServoData.servo_map[this->get_parameter("elbow_id").as_int()].absolute_goal_position = msg->vector.z;
+  mServoData.servo_map[this->get_parameter("pivot_1_id").as_int()].absolute_goal_position = msg->twist.linear.x;
+  mServoData.servo_map[this->get_parameter("shoulder_1_id").as_int()].absolute_goal_position = msg->twist.linear.y;
+  mServoData.servo_map[this->get_parameter("elbow_1_id").as_int()].absolute_goal_position = msg->twist.linear.z;
+
+  mServoData.servo_map[this->get_parameter("pivot_2_id").as_int()].absolute_goal_position = msg->twist.angular.x;
+  mServoData.servo_map[this->get_parameter("shoulder_2_id").as_int()].absolute_goal_position = msg->twist.angular.y;
+  mServoData.servo_map[this->get_parameter("elbow_2_id").as_int()].absolute_goal_position = msg->twist.angular.z;
 }
 
 /* Set velocity reference directly on servo
 */
-void DriverFeetechServo::referenceServoVelocityCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+void DriverFeetechServo::referenceServoVelocityCallback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
 {
   // Set reference velocity for all servos
-  setVelocityReference(this->get_parameter("pivot_id").as_int(), msg->vector.x);
-  setVelocityReference(this->get_parameter("shoulder_id").as_int(), msg->vector.y);
-  setVelocityReference(this->get_parameter("elbow_id").as_int(), msg->vector.z);
+  setVelocityReference(this->get_parameter("pivot_1_id").as_int(), msg->twist.linear.x);
+  setVelocityReference(this->get_parameter("shoulder_1_id").as_int(), msg->twist.linear.y);
+  setVelocityReference(this->get_parameter("elbow_1_id").as_int(), msg->twist.linear.z);
+
+  setVelocityReference(this->get_parameter("pivot_2_id").as_int(), msg->twist.angular.x);
+  setVelocityReference(this->get_parameter("shoulder_2_id").as_int(), msg->twist.angular.y);
+  setVelocityReference(this->get_parameter("elbow_2_id").as_int(), msg->twist.angular.z);
 }
 
 void DriverFeetechServo::HomeAll()
@@ -352,39 +378,41 @@ void DriverFeetechServo::InitializeServos()
   }
 
   // add all the servos and populate data
-  
+  // === ARM 1 ===
   mServoData.AddServo(ServoState(
-    this->get_parameter("pivot_id").as_int(), 
+    this->get_parameter("pivot_1_id").as_int(), 
     0,                // Position
     0,                // Velocity
     0,                // Current
     0,                // Voltage   
-    this->get_parameter("limit_pivot").as_int(), 
+    this->get_parameter("limit_1_pivot").as_int(), 
     0,                // Continuous position
     0,                // Home position
     -1.5,             // Ticks from home position to nominal position
     4.0,              // Gear ratio
     0.f,              // Absolute current position
     0.f,              // Absolute goal position
+    0,                // Ticks to go
     PRESET, 
     POSITION_MODE));
   mServoData.AddServo(ServoState(
-    this->get_parameter("shoulder_id").as_int(), 
+    this->get_parameter("shoulder_1_id").as_int(), 
     0,                // Position
     0,                // Velocity
     0,                // Current
     0,                // Voltage
-    this->get_parameter("limit_shoulder").as_int(), 
+    this->get_parameter("limit_1_shoulder").as_int(), 
     0,                // Continuous position
     0,                // Home position
     -0.65,             // Ticks from home position to nominal position
     1.0,              // Gear ratio
     0.f,              // Absolute current position
     0.f,              // Absolute goal position
+    0,                // Ticks to go
     PRESET, 
     POSITION_MODE));
   mServoData.AddServo(ServoState(
-    this->get_parameter("elbow_id").as_int(), 
+    this->get_parameter("elbow_1_id").as_int(), 
     0,                // Position
     0,                // Velocity
     0,                // Current
@@ -396,15 +424,65 @@ void DriverFeetechServo::InitializeServos()
     2.0,              // Gear ratio
     0.f,              // Absolute current position
     0.f,              // Absolute goal position
+    0,                // Ticks to go
     PRESET, 
     POSITION_MODE));
+    // === ARM 2 ===
+    mServoData.AddServo(ServoState(
+      this->get_parameter("pivot_2_id").as_int(), 
+      0,                // Position
+      0,                // Velocity
+      0,                // Current
+      0,                // Voltage   
+      this->get_parameter("limit_2_pivot").as_int(), 
+      0,                // Continuous position
+      0,                // Home position
+      -1.5,             // Ticks from home position to nominal position
+      4.0,              // Gear ratio
+      0.f,              // Absolute current position
+      0.f,              // Absolute goal position
+      0,                // Ticks to go
+      PRESET, 
+      POSITION_MODE));
+    mServoData.AddServo(ServoState(
+      this->get_parameter("shoulder_2_id").as_int(), 
+      0,                // Position
+      0,                // Velocity
+      0,                // Current
+      0,                // Voltage
+      this->get_parameter("limit_2_shoulder").as_int(), 
+      0,                // Continuous position
+      0,                // Home position
+      -0.65,             // Ticks from home position to nominal position
+      1.0,              // Gear ratio
+      0.f,              // Absolute current position
+      0.f,              // Absolute goal position
+      0,                // Ticks to go
+      PRESET, 
+      POSITION_MODE));
+    mServoData.AddServo(ServoState(
+      this->get_parameter("elbow_2_id").as_int(), 
+      0,                // Position
+      0,                // Velocity
+      0,                // Current
+      0,                // Voltage 
+      -1,                // No limit switch
+      0,                // Continuous position
+      0,                // Home position
+      -1.8,                // RAD from home position to nominal position
+      2.0,              // Gear ratio
+      0.f,              // Absolute current position
+      0.f,              // Absolute goal position
+      0,                // Ticks to go
+      PRESET, 
+      POSITION_MODE));
   getAllPresentPositions();
   getAllPresentVelocities();
   getAllPresentCurrents();
   getAllPresentVoltages();
 
   // Set all servos to torque enable
-  setAllEnable(ENABLED);
+  setAllEnable(DISABLED);
 
   // home the servos
   setAllMode(VELOCITY_MODE);
@@ -431,7 +509,6 @@ int DriverFeetechServo::getSinglePresentPosition(const int id)
   {
     homed_position = 4096+homed_position;
   }
-  mServoData.servo_map[id].position = homed_position;
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present position for ID %d. Error code %i", id, mErrorCode);
@@ -441,6 +518,7 @@ int DriverFeetechServo::getSinglePresentPosition(const int id)
     RCLCPP_DEBUG(this->get_logger(), "Get [ID: %d] [Present position: %d ticks]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].position);
+    mServoData.servo_map[id].position = homed_position;
     return 0;
   }
 };

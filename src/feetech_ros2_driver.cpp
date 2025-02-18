@@ -54,11 +54,11 @@ DriverFeetechServo::DriverFeetechServo()
   packetHandler(nullptr),
   mErrorCode(0),
   mCommResult(0),
-  mMaxVelocity(250.f),
+  mMaxVelocity(400.f),
   mCurrentThreshold(6.f),
   mNodeFrequency(0),
   mPositionPGain(0.3f),
-  mPositionDGain(0.15f),
+  mPositionDGain(0.03f),
   mPositionThreshold(20)
 {
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
@@ -347,7 +347,7 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       RCLCPP_INFO(this->get_logger(), "Set current position as home for %d", id);
   }
 
-  sleep(1); // Wait 1 second
+  sleep(0.1); // Wait 1 second
 }
 
 /*
@@ -482,7 +482,7 @@ void DriverFeetechServo::InitializeServos()
   getAllPresentVoltages();
 
   // Set all servos to torque enable
-  setAllEnable(DISABLED);
+  setAllEnable(ENABLED);
 
   // home the servos
   setAllMode(VELOCITY_MODE);
@@ -518,7 +518,7 @@ int DriverFeetechServo::getSinglePresentPosition(const int id)
     RCLCPP_DEBUG(this->get_logger(), "Get [ID: %d] [Present position: %d ticks]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].position);
-    mServoData.servo_map[id].position = homed_position;
+    mServoData.servo_map[id].position = homed_position; // such that it doesn't get a bs position when failing
     return 0;
   }
 };
@@ -539,7 +539,6 @@ int DriverFeetechServo::getSinglePresentVelocity(const int id)
   int signedValue = data & ~0x8000;
   if (data & 0x8000)
       signedValue = -signedValue;
-  mServoData.servo_map[id].velocity = signedValue;
   
   // Error handling
   if (mCommResult != COMM_SUCCESS) {
@@ -550,6 +549,7 @@ int DriverFeetechServo::getSinglePresentVelocity(const int id)
     RCLCPP_DEBUG(this->get_logger(), "Get [ID: %d] [Present velocity: %d ticks/s]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].velocity);
+    mServoData.servo_map[id].velocity = signedValue;
     return 0;
   }
 };
@@ -570,7 +570,6 @@ int DriverFeetechServo::getSinglePresentCurrent(const int id)
   int signedValue = data & ~0x8000;
   if (data & 0x8000)
       signedValue = -signedValue;
-  mServoData.servo_map[id].current = signedValue;
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present current for ID %d. Error code %i", id, mErrorCode);
@@ -580,6 +579,7 @@ int DriverFeetechServo::getSinglePresentCurrent(const int id)
     RCLCPP_DEBUG(this->get_logger(), "Get [ID: %d] [Present current: %f mA]",
     mServoData.servo_map[id].id,
     mServoData.servo_map[id].current*6.5);
+    mServoData.servo_map[id].current = signedValue;
     return 0;
   }
 

@@ -15,13 +15,9 @@
 #ifndef FEETECH_ROS2_DRIVER_HPP_
 #define FEETECH_ROS2_DRIVER_HPP_
 
-#include <cstdio>
-#include <memory>
-#include <string>
-
 #include "rclcpp/rclcpp.hpp"
-#include "rcutils/cmdline_parser.h"
 #include "dynamixel_sdk/dynamixel_sdk.h"
+#include <sensor_msgs/msg/joint_state.hpp>
 
 // Control table addresses for Feetech STS
 #define ADDR_OPERATING_MODE 33 // 0: position, 1: velocity
@@ -44,7 +40,7 @@
 
 // Default setting
 #define BAUDRATE 1000000  // Servo Baudrate
-#define DEVICE_NAME "/dev/ttyUSB1"  // [Linux]: "/dev/ttyUSB*"
+#define DEVICE_NAME "/dev/ttyUSB0"  // [Linux]: "/dev/ttyUSB*"
 
 // Modes
 #define TORQUE_ENABLE 1
@@ -124,17 +120,14 @@ private:
   void timerCallback();
 
   // publishers
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr current_servo_position_publisher_;
-  rclcpp::Publisher<geometry_msgs::msg::Vector3Stamped>::SharedPtr current_servo_velocity_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr current_servo_state_publisher_;
 
   // subscribers
-  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr reference_servo_position_subscriber_;
-  rclcpp::Subscription<geometry_msgs::msg::Vector3Stamped>::SharedPtr reference_servo_velocity_subscriber_;
-
+  rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr reference_servo_state_subscriber_;
+  
   // callbacks
-  void referenceServoPositionCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
-  void referenceServoVelocityCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg);
-
+  void referenceServoStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
+  
   // servo data getters
   void getSinglePresentPosition(const int id);
   void getSinglePresentVelocity(const int id);
@@ -159,6 +152,9 @@ private:
   // Handlers
   dynamixel::PortHandler *portHandler;
   dynamixel::PacketHandler *packetHandler;
+
+  // Servo IDs
+  std::vector<int64_t> ids;
 
   // ??
   uint8_t mErrorCode;

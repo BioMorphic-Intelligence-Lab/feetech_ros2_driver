@@ -27,14 +27,7 @@
 // Author: Will Son
 *******************************************************************************/
 
-#include <cstdio>
-#include <memory>
-#include <geometry_msgs/msg/vector3_stamped.hpp>
-#include <wiringPi.h>
-
-#include "dynamixel_sdk/dynamixel_sdk.h"
-#include "rclcpp/rclcpp.hpp"
-#include "rcutils/cmdline_parser.h"
+//#include <wiringPi.h>
 
 #include "feetech_ros2_driver/feetech_ros2_driver.hpp"
 
@@ -59,31 +52,25 @@ DriverFeetechServo::DriverFeetechServo()
 {
   RCLCPP_INFO(this->get_logger(), "Started Feetech servo driver node");
 
-  // parameter
-  this->declare_parameter("pivot_id",1);
-  this->declare_parameter("shoulder_id",2);
-  this->declare_parameter("elbow_id",3);
-  this->declare_parameter("limit_pivot", 10);
-  this->declare_parameter("limit_shoulder", 6);
-
+  // Declare all parameter
+  this->declare_parameter("motor_ids",
+                          std::vector<int>{1});
   this->declare_parameter("frequency", 20);
-
   // QoS settings
   this->declare_parameter("qos_depth", 10);
-  // int8_t qos_depth = 0;
-  // this->get_parameter("qos_depth", qos_depth);
-  // const auto QOS_RKL10V =
-  //   rclcpp::QoS(rclcpp::KeepLast(qos_depth)).reliable().durability_volatile();
-
-  // Subscriptions
-  // Subscribe to topic to set mode and to topic to set reference (i.e. reference--> one messag for all servos)
-  reference_servo_position_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/servo/in/reference_position", 10, std::bind(&DriverFeetechServo::referenceServoPositionCallback, this, _1));
-  reference_servo_velocity_subscriber_ = this->create_subscription<geometry_msgs::msg::Vector3Stamped>("/servo/in/reference_velocity", 10, std::bind(&DriverFeetechServo::referenceServoVelocityCallback, this, _1));
-
+  
+  this->reference_servo_state_subscriber_ = this->create_subscription<sensor_msgs::msg::JointState>(
+    "/servo/in/reference", 10,
+    std::bind(&DriverFeetechServo::referenceServoStateCallback,
+              this,
+              _1)
+  );
   // Publishers
   // Publish relevant information i.e. servo position (calculate in this node?), velocity, torque etc.
-  current_servo_position_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/servo/out/current_position", 10);
-  current_servo_velocity_publisher_ = this->create_publisher<geometry_msgs::msg::Vector3Stamped>("/servo/out/current_velocity", 10);
+  this->current_servo_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/servo/out/current_state", 10);
+
+  // Get all parameters
+  this->ids = this->get_parameter("motor_ids").as_integer_array();
 
   // Initialize Servos
   InitializeServos();
@@ -113,38 +100,29 @@ void DriverFeetechServo::timerCallback()
 void DriverFeetechServo::PublishServoData()
 {
   // Publish current servo positions and velocities
-  auto current_servo_position_msg = geometry_msgs::msg::Vector3Stamped();
-  auto current_servo_velocity_msg = geometry_msgs::msg::Vector3Stamped();
-  current_servo_position_msg.vector.x = mServoData.servo_map[this->get_parameter("pivot_id").as_int()].position;
-  current_servo_position_msg.vector.y = mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].position;
-  current_servo_position_msg.vector.z = mServoData.servo_map[this->get_parameter("elbow_id").as_int()].position;
+  auto current_servo_state_msg = sensor_msgs::msg::JointState();
+  std::vector<double> positions, velocities;
+  for(uint16_t i = 0; i < this->ids.size(); i++) {
+    positions.push_back(mServoData.servo_map[this->ids.at(i)].position);
+    velocities.push_back(mServoData.servo_map[this->ids.at(i)].velocity);
+  }
 
-  current_servo_velocity_msg.vector.x = mServoData.servo_map[this->get_parameter("pivot_id").as_int()].velocity;
-  current_servo_velocity_msg.vector.y = mServoData.servo_map[this->get_parameter("shoulder_id").as_int()].velocity;
-  current_servo_velocity_msg.vector.z = mServoData.servo_map[this->get_parameter("elbow_id").as_int()].velocity;
+  current_servo_state_msg.header.stamp = this->get_clock()->now();
+  current_servo_state_msg.position = positions;
+  current_servo_state_msg.velocity = velocities;
 
-  current_servo_position_publisher_->publish(current_servo_position_msg);
-  current_servo_velocity_publisher_->publish(current_servo_velocity_msg);
+  this->current_servo_state_publisher_->publish(current_servo_state_msg);
 }
 
-/* Set reference position directly on servo
+/* Set reference state directly on servo
 */
-void DriverFeetechServo::referenceServoPositionCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
+void DriverFeetechServo::referenceServoStateCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
   // Set reference position for all servos
-  setPositionReference(this->get_parameter("pivot_id").as_int(), msg->vector.x);
-  setPositionReference(this->get_parameter("shoulder_id").as_int(), msg->vector.y);
-  setPositionReference(this->get_parameter("elbow_id").as_int(), msg->vector.z);
-}
-
-/* Set velocity reference directly on servo
-*/
-void DriverFeetechServo::referenceServoVelocityCallback(const geometry_msgs::msg::Vector3Stamped::SharedPtr msg)
-{
-  // Set reference velocity for all servos
-  setVelocityReference(this->get_parameter("pivot_id").as_int(), msg->vector.x);
-  setVelocityReference(this->get_parameter("shoulder_id").as_int(), msg->vector.y);
-  setVelocityReference(this->get_parameter("elbow_id").as_int(), msg->vector.z);
+  for(uint16_t i = 0; i < this->ids.size(); i++) {
+    setPositionReference(this->ids.at(i), msg->position[i]);
+    setVelocityReference(this->ids.at(i), msg->velocity[i]);
+  }
 }
 
 void DriverFeetechServo::HomeAll()
@@ -154,7 +132,7 @@ void DriverFeetechServo::HomeAll()
 
 void DriverFeetechServo::HomeSingleServo(const int id)
 {
-  if (mServoData.servo_map[id].homing_mode==SWITCH_BASED)
+  /*if (mServoData.servo_map[id].homing_mode==SWITCH_BASED)
   {
     if (digitalRead(mServoData.servo_map[id].limit_switch_pin)==HIGH) // Limit switch is pressed
     {
@@ -176,8 +154,8 @@ void DriverFeetechServo::HomeSingleServo(const int id)
       getSinglePresentPosition(id);
       mServoData.servo_map[id].home_position = mServoData.servo_map[id].position;
     }
-  }
-  else if (mServoData.servo_map[id].homing_mode==LOAD_BASED)
+  }*/
+  if (mServoData.servo_map[id].homing_mode==LOAD_BASED)
   {
     // Read present current and save
     getSinglePresentCurrent(id);
@@ -217,37 +195,20 @@ void DriverFeetechServo::InitializeServos()
     RCLCPP_INFO(this->get_logger(), "Succeeded to set the baudrate.");
   }
 
-  // add all the servos and populate data
-  mServoData.AddServo(ServoState(
-    this->get_parameter("pivot_id").as_int(), 
-    0, 
-    0, 
-    0, 
-    this->get_parameter("limit_pivot").as_int(), 
-    0, 
-    0, 
-    SWITCH_BASED, 
-    POSITION_MODE));
-  mServoData.AddServo(ServoState(
-    this->get_parameter("shoulder_id").as_int(), 
-    0, 
-    0, 
-    0, 
-    this->get_parameter("limit_shoulder").as_int(), 
-    0, 
-    0, 
-    SWITCH_BASED, 
-    POSITION_MODE));
-  mServoData.AddServo(ServoState(
-    this->get_parameter("elbow_id").as_int(), 
-    0, 
-    0, 
-    0, 
-    0, 
-    0, 
-    0, 
-    LOAD_BASED, 
-    POSITION_MODE));
+  // Add all Servos and populate data
+  for(uint16_t i = 0; i < this->ids.size(); i++) {
+    mServoData.AddServo(ServoState(
+      this->ids.at(i), 
+      0, 
+      0, 
+      0, 
+      0, 
+      0, 
+      0, 
+      LOAD_BASED, 
+      VELOCITY_MODE));
+  }
+
   getAllPresentPositions();
   getAllPresentVelocities();
   getAllPresentCurrents();
@@ -256,9 +217,9 @@ void DriverFeetechServo::InitializeServos()
   setAllEnable(ENABLED);
 
   // home the servos
-  for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
-    HomeSingleServo(id);
-  }
+  //for (auto& [id, servo] : mServoData.servo_map) {  // Use non-const reference
+  //  HomeSingleServo(id);
+  //}
 
   // set all servos to velocity mode
   setAllMode(VELOCITY_MODE);
@@ -289,14 +250,21 @@ void DriverFeetechServo::getSinglePresentPosition(const int id)
 
 void DriverFeetechServo::getSinglePresentVelocity(const int id)
 {
+
+  uint16_t data;
   // Read Present Position (length : 4 bytes) and Convert uint32 -> int32
   mCommResult = packetHandler->read2ByteTxRx(
     portHandler,
     (uint8_t) mServoData.servo_map[id].id,
     ADDR_PRESENT_SPEED,
-    reinterpret_cast<uint16_t *>(&mServoData.servo_map[id].velocity),
+    &data,
     &mErrorCode
   );
+
+  int signedValue = data & ~0x8000;
+  if (data & 0x8000)
+      signedValue = -signedValue;
+  mServoData.servo_map[id].velocity = signedValue;
 
   if (mCommResult != COMM_SUCCESS) {
     RCLCPP_ERROR(this->get_logger(), "Failed to get present velocity. Error code %c", mErrorCode);
@@ -400,11 +368,17 @@ void DriverFeetechServo::setPositionReference(const int id, const int &reference
 
 void DriverFeetechServo::setVelocityReference(const int id, const int &reference)
 {
+  uint16_t ref = abs(reference);
+  
+  if (reference < 0) { 
+    ref = 0x8000 | ref;
+  } 
+
   mCommResult = packetHandler->write2ByteTxRx(
     portHandler,
     id,
     ADDR_GOAL_SPEED,
-    reference,
+    ref,
     &mErrorCode
   );
 
@@ -444,11 +418,11 @@ void DriverFeetechServo::setAllEnable(const TorqueEnable &enable)
 int main(int argc, char * argv[])
 {
   // Set up the gpio using wiringPi for limit switches
-  wiringPiSetup();
+  /*wiringPiSetup();
   pinMode(LIMIT_PIVOT_1, INPUT);
   pinMode(LIMIT_PIVOT_2, INPUT);
   pinMode(LIMIT_SHOULDER_1, INPUT);
-  pinMode(LIMIT_SHOULDER_2, INPUT);
+  pinMode(LIMIT_SHOULDER_2, INPUT);*/
 
   // Initialize ROS node
   rclcpp::init(argc, argv);

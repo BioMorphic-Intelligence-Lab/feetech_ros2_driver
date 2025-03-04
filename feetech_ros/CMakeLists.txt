@@ -29,7 +29,12 @@ include_directories(
 #)
 
 install(TARGETS
-feetech_ros2_driver
+  feetech_ros2_driver
   DESTINATION lib/${PROJECT_NAME})
+install(DIRECTORIES
+  launch
+  config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_package()

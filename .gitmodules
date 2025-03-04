@@ -1,0 +1,3 @@
+[submodule "feetech_cpp_lib"]
+	path = feetech_cpp_lib
+	url = git@github.com:BioMorphic-Intelligence-Lab/feetech_cpp_lib.git

@@ -9,8 +9,6 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
-#find_package(wiringPi REQUIRED)
-find_package(dynamixel_sdk REQUIRED)
 
 add_executable(feetech_ros2_driver src/feetech_ros2_driver.cpp)
 ament_target_dependencies(feetech_ros2_driver 

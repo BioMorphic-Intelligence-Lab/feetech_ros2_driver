@@ -7,7 +7,7 @@
   <maintainer email="mbrummelhuis@gmail.com">Martijn Brummelhuis</maintainer>
   <license>GPL-3.0-only</license>
 
-  <depend>feetech_cpp_lib</depend>
+  <depend>feetech_lib</depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
 

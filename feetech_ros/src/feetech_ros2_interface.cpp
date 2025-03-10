@@ -52,7 +52,7 @@ void FeetechROS2Interface::loop()
 
 void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    for (int i = 0; i<msg->name.size(); i++)
+    for (uint8_t i = 0; i < msg->name.size(); i++)
     {
         // Find servo ID
         int servo_id = std::stoi(msg->name[i]);
@@ -75,8 +75,8 @@ void FeetechROS2Interface::publishServoState()
     // Publish current servo positions and velocities
     auto servo_state_msg = sensor_msgs::msg::JointState();
     servo_state_msg.header.stamp = this->get_clock()->now();
-    servo_state_msg.position = driver->getCurrentPositions();;
-    servo_state_msg.velocity = driver->getCurrentVelocities();;
+    servo_state_msg.position = driver->getCurrentPositions();
+    servo_state_msg.velocity = driver->getCurrentVelocities();
 
     this->servo_state_publisher_->publish(servo_state_msg);
 }

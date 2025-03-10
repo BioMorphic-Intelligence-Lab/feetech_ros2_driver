@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>feetech_ros2_driver</name>
+  <name>feetech_ros2_interface</name>
   <version>0.0.1</version>
   <description>Servo interface driver ROS2 package for Aerial Tactile Servoing project</description>
   <maintainer email="mbrummelhuis@gmail.com">Martijn Brummelhuis</maintainer>
   <license>GPL-3.0-only</license>
 
-  <depend>dynamixel_sdk</depend>
+  <depend>feetech_cpp_lib</depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

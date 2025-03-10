@@ -1,10 +1,6 @@
 #include "rclcpp/rclcpp.hpp"
-#include "feetech_cpp_lib/feetech_lib.hpp"
-
+#include "feetech_lib/feetech_lib.hpp"
 #include <sensor_msgs/msg/joint_state.hpp>
-
-
-#include "feetech_ros2_driver/boost_timer.hpp"
 
 class FeetechROS2Interface : public rclcpp::Node
 {

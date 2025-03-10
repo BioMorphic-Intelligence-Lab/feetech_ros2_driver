@@ -16,7 +16,6 @@
 #define FEETECH_ROS2_DRIVER_HPP_
 
 #include "rclcpp/rclcpp.hpp"
-#include "dynamixel_sdk/dynamixel_sdk.h"
 #include <sensor_msgs/msg/joint_state.hpp>
 
 // Control table addresses for Feetech STS

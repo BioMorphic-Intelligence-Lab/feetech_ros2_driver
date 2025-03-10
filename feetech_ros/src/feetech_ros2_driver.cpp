@@ -27,9 +27,7 @@
 // Author: Will Son
 *******************************************************************************/
 
-//#include <wiringPi.h>
-
-#include "feetech_ros2_driver/feetech_ros2_driver.hpp"
+#include "feetech_ros2_driver.hpp"
 
 // Limit switch input pins -- Check gpio readall
 #define LIMIT_PIVOT_1 10

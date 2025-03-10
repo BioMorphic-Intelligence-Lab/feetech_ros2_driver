@@ -1,6 +1,6 @@
 
 
-#include "feetech_ros2_driver/feetech_ros2_interface.hpp"
+#include "feetech_ros2_interface.hpp"
 
 FeetechROS2Interface::FeetechROS2Interface() : 
     Node("feetech_ros2_interface"),

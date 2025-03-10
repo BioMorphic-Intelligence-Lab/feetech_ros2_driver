@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(feetech_ros2_driver)
+project(feetech_ros2_interface)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -8,28 +8,24 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(feetech_cpp_lib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
-add_executable(feetech_ros2_driver src/feetech_ros2_driver.cpp)
-ament_target_dependencies(feetech_ros2_driver 
+add_executable(feetech_ros2_interface src/feetech_ros2_interface.cpp)
+target_include_directories(feetech_ros2_interface PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/feetech_ros2_interface>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(feetech_ros2_interface 
   rclcpp 
+  feetech_cpp_lib
   sensor_msgs
-  dynamixel_sdk
-  )
-
-include_directories(
-  include
 )
 
-# link wiringPi library
-#target_link_libraries(feetech_ros2_driver
-#    wiringPi
-#)
-
 install(TARGETS
-  feetech_ros2_driver
+  feetech_ros2_interface
   DESTINATION lib/${PROJECT_NAME})
-install(DIRECTORIES
+
+install(DIRECTORY
   launch
   config
   DESTINATION share/${PROJECT_NAME}

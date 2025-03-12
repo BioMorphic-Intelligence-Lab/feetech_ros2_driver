@@ -11,9 +11,10 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter<int64_t>("driver.baud_rate", 1000000);
     this->declare_parameter<double>("driver.frequency", 100.);
     this->declare_parameter<std::vector<int>>("servos.ids", std::vector<int>{1});
+
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
-    this->declare_parameter("servos.max_speeds", std::vector<double>{250});
-    this->declare_parameter("servos.max_currents", std::vector<double>{1000});
+    this->declare_parameter("servos.max_speeds", std::vector<double>{250.0});
+    this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -24,12 +25,18 @@ FeetechROS2Interface::FeetechROS2Interface() :
     // Publishers
     servo_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/servo/out/state", 10);
     
-    // Driver
-    driver = std::make_shared<FeetechServo>();
-    driver->init(
+    // Generate uint8_t vector of ids
+    std::vector<long> int_ids = this->get_parameter("servos.ids").as_integer_array();
+    std::vector<uint8_t> ids(int_ids.size());
+    std::transform(int_ids.begin(), int_ids.end(), ids.begin(),
+                    [](int val) { return static_cast<uint8_t>(val); });
+
+    // Construct Driver
+    driver = std::make_shared<FeetechServo>(
         this->get_parameter("driver.port_name").as_string(),
         this->get_parameter("driver.baud_rate").as_int(),
-        this->get_parameter("driver.frequency").as_double()
+        this->get_parameter("driver.frequency").as_double(),
+        ids
     );
 
     // Timer

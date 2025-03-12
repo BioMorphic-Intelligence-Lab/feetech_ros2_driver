@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(feetech_ros2_interface)
+project(feetech_ros2)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -8,7 +8,7 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(feetech_lib REQUIRED)
+find_package(feetech_cpp_lib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 
 add_executable(feetech_ros2_interface src/feetech_ros2_interface.cpp)
@@ -17,7 +17,7 @@ target_include_directories(feetech_ros2_interface PUBLIC
   $<INSTALL_INTERFACE:include>)
 ament_target_dependencies(feetech_ros2_interface 
   rclcpp 
-  feetech_lib
+  feetech_cpp_lib
   sensor_msgs
 )
 

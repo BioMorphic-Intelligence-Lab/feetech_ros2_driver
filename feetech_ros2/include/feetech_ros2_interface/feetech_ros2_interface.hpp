@@ -1,5 +1,5 @@
 #include "rclcpp/rclcpp.hpp"
-#include "feetech_lib/feetech_lib.hpp"
+#include "feetech_cpp_lib/feetech_lib.hpp"
 
 #include <sensor_msgs/msg/joint_state.hpp>
 

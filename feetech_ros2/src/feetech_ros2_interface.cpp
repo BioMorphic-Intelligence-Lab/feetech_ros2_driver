@@ -1,5 +1,3 @@
-
-
 #include "feetech_ros2_interface.hpp"
 
 FeetechROS2Interface::FeetechROS2Interface() : 
@@ -10,8 +8,9 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter<std::string>("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter<int64_t>("driver.baud_rate", 1000000);
     this->declare_parameter<double>("driver.frequency", 100.);
-    this->declare_parameter<std::vector<int>>("servos.ids", std::vector<int>{1});
 
+    this->declare_parameter<std::vector<int>>("servos.ids", std::vector<int>{1});
+    this->declare_parameter("servos.operating_modes", std::vector<int>{4});
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
     this->declare_parameter("servos.max_speeds", std::vector<double>{250.0});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
@@ -27,8 +26,8 @@ FeetechROS2Interface::FeetechROS2Interface() :
     
     // Generate uint8_t vector of ids
     std::vector<long> int_ids = this->get_parameter("servos.ids").as_integer_array();
-    std::vector<uint8_t> ids(int_ids.size());
-    std::transform(int_ids.begin(), int_ids.end(), ids.begin(),
+    ids_.resize(int_ids.size());
+    std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
 
     // Construct Driver
@@ -36,8 +35,19 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.port_name").as_string(),
         this->get_parameter("driver.baud_rate").as_int(),
         this->get_parameter("driver.frequency").as_double(),
-        ids
+        ids_
     );
+
+    // Optional: Set driver settings
+    DriverSettings settings = driver->getDriverSettings();
+    driver->setDriverSettings(settings);
+
+    // Set servo settings
+    std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
+    std::vector<DriverMode> modes(operating_modes.size());
+    std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
+                    [](int val) { return static_cast<DriverMode>(val); });
+    driver->setOperatingModes(modes);
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();
@@ -59,20 +69,31 @@ void FeetechROS2Interface::loop()
 
 void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    for (uint8_t i = 0; i < msg->name.size(); i++)
+    if(msg->position.size() == ids_.size())
     {
-        // Find servo ID
-        int servo_id = std::stoi(msg->name[i]);
-        // Find servo position
-        int servo_position = msg->position[i];
-        // Find servo velocity
-        int servo_velocity = msg->velocity[i];
+        for (uint8_t i = 0; i < ids_.size(); i++)
+        {
+            // Find servo position
+            double servo_position = msg->position[i];
 
-        // Set servo position
-        if (driver->getOperatingMode() == STSMode::POSITION)
-            driver->setReferencePosition(servo_id, servo_position);
-        else if (driver->getOperatingMode() == STSMode::VELOCITY)
-            driver->setReferenceVelocity(servo_id, servo_velocity);
+            // Set servo position
+            if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
+                driver->setReferencePosition(ids_[i], servo_position);
+        }
+    }
+    if(msg->velocity.size() == ids_.size())
+    {
+        for (uint8_t i = 0; i < ids_.size(); i++)
+        {
+            // Find servo velocity
+            double servo_velocity = msg->velocity[i];
+
+            // Set servo velocity
+            if (driver->getOperatingMode(ids_[i]) == DriverMode::VELOCITY)
+            {
+                driver->setReferenceVelocity(ids_[i], servo_velocity);
+            }
+        }
     }
 }
 

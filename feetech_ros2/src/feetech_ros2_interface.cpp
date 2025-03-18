@@ -4,12 +4,12 @@ FeetechROS2Interface::FeetechROS2Interface() :
     Node("feetech_ros2_interface")
 {
     // Declare all parameters
-    this->declare_parameter<double>("node.frequency", 20.);
-    this->declare_parameter<std::string>("driver.port_name", "/dev/ttyUSB0");
-    this->declare_parameter<int64_t>("driver.baud_rate", 1000000);
-    this->declare_parameter<double>("driver.frequency", 100.);
+    this->declare_parameter("node.frequency", 20.);
+    this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
+    this->declare_parameter("driver.baud_rate", 1000000);
+    this->declare_parameter("driver.frequency", 100.);
 
-    this->declare_parameter<std::vector<int>>("servos.ids", std::vector<int>{1});
+    this->declare_parameter("servos.ids", std::vector<int>{1});
     this->declare_parameter("servos.operating_modes", std::vector<int>{4});
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
     this->declare_parameter("servos.directions", std::vector<int>{1});
@@ -34,6 +34,11 @@ FeetechROS2Interface::FeetechROS2Interface() :
                     [](int val) { return static_cast<uint8_t>(val); });
 
     // Construct Driver
+    RCLCPP_INFO(this->get_logger(), "Constructing driver with servo ids: ");
+    for (auto id : ids_)
+    {
+        RCLCPP_INFO(this->get_logger(), "Servo ID: %d", id);
+    }
     driver = std::make_shared<FeetechServo>(
         this->get_parameter("driver.port_name").as_string(),
         this->get_parameter("driver.baud_rate").as_int(),
@@ -89,6 +94,7 @@ void FeetechROS2Interface::loop()
 
 void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
+    RCLCPP_INFO(this->get_logger(), "Received servo reference message");
     if(msg->position.size() == ids_.size())
     {
         for (uint8_t i = 0; i < ids_.size(); i++)

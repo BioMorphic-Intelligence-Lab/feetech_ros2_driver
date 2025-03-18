@@ -12,15 +12,17 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter<std::vector<int>>("servos.ids", std::vector<int>{1});
     this->declare_parameter("servos.operating_modes", std::vector<int>{4});
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
-    this->declare_parameter("servos.max_speeds", std::vector<double>{250.0});
+    this->declare_parameter("servos.directions", std::vector<int>{1});
+    this->declare_parameter("servos.max_speeds", std::vector<double>{0.1});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/servo/in/references/joint_velocities", 10,
+        "/servo/in/references/joint_references", 10,
         std::bind(&FeetechROS2Interface::referenceCallback, this, std::placeholders::_1)
     );
+
 
     // Publishers
     servo_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/servo/out/state", 10);
@@ -44,14 +46,27 @@ FeetechROS2Interface::FeetechROS2Interface() :
     driver->setDriverSettings(settings);
 
     // Set servo settings from parameter file
+    // operating modes
     std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
     std::vector<DriverMode> modes(operating_modes.size());
     std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
                     [](int val) { return static_cast<DriverMode>(val); });
     driver->setOperatingModes(modes);
 
+    // directions
+    std::vector<long> directions = this->get_parameter("servos.directions").as_integer_array();
+    std::vector<int> dirs(directions.size());
+    std::transform(directions.begin(), directions.end(), dirs.begin(),
+                    [](int val) { return static_cast<int>(val); });
+    driver->setVelocityDirections(dirs);
+
+    // gear ratios
     std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
     driver->setGearRatios(gear_ratios);
+
+    // max speeds
+    std::vector<double> max_speeds = this->get_parameter("servos.max_speeds").as_double_array();
+    driver->setMaxSpeeds(max_speeds);
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();

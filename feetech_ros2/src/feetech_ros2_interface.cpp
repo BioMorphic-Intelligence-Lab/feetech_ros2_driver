@@ -5,6 +5,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
 {
     // Declare all parameters
     this->declare_parameter("node.frequency", 20.);
+    
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
     this->declare_parameter("driver.frequency", 100.);
@@ -45,6 +46,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.frequency").as_double(),
         ids_
     );
+    RCLCPP_INFO(this->get_logger(), "Driver constructed");
 
     // Optional: Set driver settings
     DriverSettings settings = driver->getDriverSettings();
@@ -104,7 +106,10 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
 
             // Set servo position
             if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
+            {
+                RCLCPP_INFO(this->get_logger(), "Setting reference position for servo %d to %f", ids_[i], servo_position);
                 driver->setReferencePosition(ids_[i], servo_position);
+            }
         }
     }
     if(msg->velocity.size() == ids_.size())

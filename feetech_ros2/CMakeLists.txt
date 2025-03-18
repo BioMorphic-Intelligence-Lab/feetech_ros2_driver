@@ -11,6 +11,7 @@ find_package(rclcpp REQUIRED)
 find_package(feetech_cpp_lib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetMode.srv"

@@ -10,6 +10,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(feetech_cpp_lib REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/SetMode.srv"
+)
 
 add_executable(feetech_ros2_interface src/feetech_ros2_interface.cpp)
 target_include_directories(feetech_ros2_interface PUBLIC
@@ -30,5 +35,9 @@ install(DIRECTORY
   config
   DESTINATION share/${PROJECT_NAME}
 )
+rosidl_target_interfaces(feetech_ros2_interface
+  ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

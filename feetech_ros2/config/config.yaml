@@ -10,7 +10,7 @@ feetech_ros2_interface:
 
     servos:
       ids: [11, 32, 13] #, 2, 3, 4, 5, 6, 7, 8]
-      operating_modes: [1, 1, 1] #, 0, 0, 0, 0, 0, 0, 0]
-      homing_modes: [0] #, 0, 0, 0, 0, 0, 0, 0]
-      max_speeds: [6.28] #, 100., 100., 100., 100., 100., 100., 100.]
-      max_currents: [100.] #, 100., 100., 100., 100., 100., 100., 100.]
+      operating_modes: [4, 4, 4] # Velocity mode 2, continuous position mode 4
+      homing_modes: [0, 0, 0] #, 0, 0, 0, 0, 0, 0, 0]
+      max_speeds: [1.0, 1.0, 1.0] #, 100., 100., 100., 100., 100., 100., 100.]
+      max_currents: [100., 100., 100.] #, 100., 100., 100., 100., 100., 100., 100.]

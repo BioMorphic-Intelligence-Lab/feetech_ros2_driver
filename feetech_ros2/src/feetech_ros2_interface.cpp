@@ -14,10 +14,11 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
     this->declare_parameter("servos.max_speeds", std::vector<double>{250.0});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
+    this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/servo/in/reference", 10,
+        "/servo/in/references/joint_velocities", 10,
         std::bind(&FeetechROS2Interface::referenceCallback, this, std::placeholders::_1)
     );
 
@@ -42,12 +43,15 @@ FeetechROS2Interface::FeetechROS2Interface() :
     DriverSettings settings = driver->getDriverSettings();
     driver->setDriverSettings(settings);
 
-    // Set servo settings
+    // Set servo settings from parameter file
     std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
     std::vector<DriverMode> modes(operating_modes.size());
     std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
                     [](int val) { return static_cast<DriverMode>(val); });
     driver->setOperatingModes(modes);
+
+    std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
+    driver->setGearRatios(gear_ratios);
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();
@@ -56,14 +60,15 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
 FeetechROS2Interface::~FeetechROS2Interface()
 {
+    // Stop all servos
+    driver->stopAll();
     // Close port
     driver->close();
 }
 
 void FeetechROS2Interface::loop()
 {
-
-    // Publish servo state
+    // Publish servo state to ROS2 network
     publishServoState();
 }
 
@@ -97,6 +102,18 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     }
 }
 
+void FeetechROS2Interface::setModeCallback(
+    const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
+    std::shared_ptr<feetech_ros2::srv::SetMode::Response> response)
+{
+    // Set mode for all servos
+    for (uint8_t i = 0; i < ids_.size(); i++)
+    {
+        driver->setOperatingMode(ids_[i], static_cast<DriverMode>(request->operating_mode));
+    }
+    response->success = true;
+}
+
 void FeetechROS2Interface::publishServoState()
 {
     // TODO: this is a copilot generated code stub, review and replace
@@ -115,6 +132,14 @@ int main(int argc, char * argv[])
   // Initialize ROS node
   rclcpp::init(argc, argv);
   auto feetech_ros2_interface = std::make_shared<FeetechROS2Interface>();
+
+  rclcpp::Service<feetech_ros2::srv::SetMode>::SharedPtr setModeSrv =
+    feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("set_servo_mode", 
+        std::bind(&FeetechROS2Interface::setModeCallback, 
+            feetech_ros2_interface, 
+            std::placeholders::_1, 
+            std::placeholders::_2));
+
   rclcpp::spin(feetech_ros2_interface);
   rclcpp::shutdown();
 

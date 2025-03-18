@@ -3,12 +3,17 @@
 
 #include <sensor_msgs/msg/joint_state.hpp>
 
+#include <feetech_ros2/srv/set_mode.hpp>
+
 
 class FeetechROS2Interface : public rclcpp::Node
 {
 public:
     FeetechROS2Interface();
     ~FeetechROS2Interface();
+
+    void setModeCallback(const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
+                         std::shared_ptr<feetech_ros2::srv::SetMode::Response> response);
 
 private:
     /// @brief Callback for the timer, execute interface loop

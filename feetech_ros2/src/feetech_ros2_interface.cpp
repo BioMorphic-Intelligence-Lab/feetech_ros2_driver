@@ -40,7 +40,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
 
-    RCLCPP_INFO(this->get_logger(), "Servo IDs: ");
+
     // Construct Driver
     driver = std::make_shared<FeetechServo>(
         this->get_parameter("driver.port_name").as_string(),
@@ -97,19 +97,17 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     {
         for (uint8_t i = 0; i < ids_.size(); i++)
         {
-            driver->setOperatingMode(ids_[i], DriverMode::VELOCITY); // TODO delete
             // Find servo velocity
             double servo_velocity = msg->velocity[i];
 
             // Set servo velocity
             if (driver->getOperatingMode(ids_[i]) == DriverMode::VELOCITY)
             {
+                RCLCPP_INFO(this->get_logger(), "Setting reference velocity for servo %d to %f", ids_[i], servo_velocity);
                 driver->setReferenceVelocity(ids_[i], servo_velocity);
             }
         }
     }
-    // log home position
-    RCLCPP_INFO(this->get_logger(), "Home position: %f", driver->getHomePosition(ids_[0]));
 }
 
 void FeetechROS2Interface::setModeCallback(

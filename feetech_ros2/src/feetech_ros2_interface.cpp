@@ -34,12 +34,8 @@ FeetechROS2Interface::FeetechROS2Interface() :
     std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
 
+    RCLCPP_INFO(this->get_logger(), "Servo IDs: ");
     // Construct Driver
-    RCLCPP_INFO(this->get_logger(), "Constructing driver with servo ids: ");
-    for (auto id : ids_)
-    {
-        RCLCPP_INFO(this->get_logger(), "Servo ID: %d", id);
-    }
     driver = std::make_shared<FeetechServo>(
         this->get_parameter("driver.port_name").as_string(),
         this->get_parameter("driver.baud_rate").as_int(),
@@ -52,28 +48,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     DriverSettings settings = driver->getDriverSettings();
     driver->setDriverSettings(settings);
 
-    // Set servo settings from parameter file
-    // operating modes
-    std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
-    std::vector<DriverMode> modes(operating_modes.size());
-    std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
-                    [](int val) { return static_cast<DriverMode>(val); });
-    driver->setOperatingModes(modes);
-
-    // directions
-    std::vector<long> directions = this->get_parameter("servos.directions").as_integer_array();
-    std::vector<int> dirs(directions.size());
-    std::transform(directions.begin(), directions.end(), dirs.begin(),
-                    [](int val) { return static_cast<int>(val); });
-    driver->setVelocityDirections(dirs);
-
-    // gear ratios
-    std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
-    driver->setGearRatios(gear_ratios);
-
-    // max speeds
-    std::vector<double> max_speeds = this->get_parameter("servos.max_speeds").as_double_array();
-    driver->setMaxSpeeds(max_speeds);
+    applyServoParams();
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();
@@ -116,6 +91,7 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     {
         for (uint8_t i = 0; i < ids_.size(); i++)
         {
+            driver->setOperatingMode(ids_[i], DriverMode::VELOCITY); // TODO delete
             // Find servo velocity
             double servo_velocity = msg->velocity[i];
 
@@ -150,6 +126,44 @@ void FeetechROS2Interface::publishServoState()
     servo_state_msg.velocity = driver->getCurrentVelocities();
 
     this->servo_state_publisher_->publish(servo_state_msg);
+}
+
+void FeetechROS2Interface::applyServoParams()
+{
+    // Set servo settings from parameter file
+    // operating modes
+    std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
+    std::vector<DriverMode> modes(operating_modes.size());
+    std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
+                    [](int val) { return static_cast<DriverMode>(val); });
+    driver->setOperatingModes(modes);
+
+    // directions
+    std::vector<long> directions = this->get_parameter("servos.directions").as_integer_array();
+    std::vector<int> dirs(directions.size());
+    std::transform(directions.begin(), directions.end(), dirs.begin(),
+                    [](int val) { return static_cast<int>(val); });
+    driver->setVelocityDirections(dirs);
+
+    // gear ratios
+    std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
+    driver->setGearRatios(gear_ratios);
+
+    // max speeds
+    std::vector<double> max_speeds = this->get_parameter("servos.max_speeds").as_double_array();
+    driver->setMaxSpeeds(max_speeds);
+
+    // proportional gains
+    std::vector<double> proportional_gains = this->get_parameter("servos.proportional_gains").as_double_array();
+    driver->setProportionalGains(proportional_gains);
+
+    // derivative gains
+    std::vector<double> derivative_gains = this->get_parameter("servos.derivative_gains").as_double_array();
+    driver->setDerivativeGains(derivative_gains);
+
+    // integral gains
+    std::vector<double> integral_gains = this->get_parameter("servos.integral_gains").as_double_array();
+    driver->setIntegralGains(integral_gains);
 }
 
 

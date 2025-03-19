@@ -30,6 +30,10 @@ private:
 
     // Callbacks
     void referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
+
+    // Helpers
+    /// @brief Apply all the servo parameters from the parameter file
+    void applyServoParams();
     
     // Data
     std::shared_ptr<FeetechServo> driver;

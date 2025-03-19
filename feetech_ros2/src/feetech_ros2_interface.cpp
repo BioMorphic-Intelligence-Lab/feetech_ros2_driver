@@ -4,12 +4,15 @@ FeetechROS2Interface::FeetechROS2Interface() :
     Node("feetech_ros2_interface")
 {
     // Declare all parameters
+    // Node parameters
     this->declare_parameter("node.frequency", 20.);
     
+    // Driver parameters
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
     this->declare_parameter("driver.frequency", 100.);
 
+    // Servo parameters
     this->declare_parameter("servos.ids", std::vector<int>{1});
     this->declare_parameter("servos.operating_modes", std::vector<int>{4});
     this->declare_parameter("servos.homing_modes", std::vector<int>{0});
@@ -17,6 +20,9 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.max_speeds", std::vector<double>{0.1});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
+    this->declare_parameter("servos.proportional_gains", std::vector<double>{3.0});
+    this->declare_parameter("servos.derivative_gains", std::vector<double>{0.0});
+    this->declare_parameter("servos.integral_gains", std::vector<double>{0.0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -102,6 +108,8 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             }
         }
     }
+    // log home position
+    RCLCPP_INFO(this->get_logger(), "Home position: %f", driver->getHomePosition(ids_[0]));
 }
 
 void FeetechROS2Interface::setModeCallback(

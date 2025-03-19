@@ -77,7 +77,7 @@ void FeetechROS2Interface::loop()
 
 void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg)
 {
-    RCLCPP_INFO(this->get_logger(), "Received servo reference message");
+    // RCLCPP_INFO(this->get_logger(), "Received servo reference message");
     if(msg->position.size() == ids_.size())
     {
         for (uint8_t i = 0; i < ids_.size(); i++)
@@ -88,7 +88,7 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             // Set servo position
             if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
             {
-                RCLCPP_INFO(this->get_logger(), "Setting reference position for servo %d to %f", ids_[i], servo_position);
+                // RCLCPP_INFO(this->get_logger(), "Setting reference position for servo %d to %f", ids_[i], servo_position);
                 driver->setReferencePosition(ids_[i], servo_position);
             }
         }
@@ -103,7 +103,7 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             // Set servo velocity
             if (driver->getOperatingMode(ids_[i]) == DriverMode::VELOCITY)
             {
-                RCLCPP_INFO(this->get_logger(), "Setting reference velocity for servo %d to %f", ids_[i], servo_velocity);
+                // RCLCPP_INFO(this->get_logger(), "Setting reference velocity for servo %d to %f", ids_[i], servo_velocity);
                 driver->setReferenceVelocity(ids_[i], servo_velocity);
             }
         }

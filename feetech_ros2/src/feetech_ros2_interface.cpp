@@ -11,6 +11,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
     this->declare_parameter("driver.frequency", 100.);
+    this->declare_parameter("driver.logging", false);
 
     // Servo parameters
     this->declare_parameter("servos.ids", std::vector<int>{1});
@@ -46,7 +47,9 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.port_name").as_string(),
         this->get_parameter("driver.baud_rate").as_int(),
         this->get_parameter("driver.frequency").as_double(),
-        ids_
+        ids_,
+        false,
+        this->get_parameter("driver.logging").as_bool()
     );
     RCLCPP_INFO(this->get_logger(), "Driver constructed");
 

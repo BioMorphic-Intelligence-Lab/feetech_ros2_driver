@@ -1,24 +1,24 @@
-# feetech_ros2_driver
-ROS2 wrapper for commanding and reading Feetech servos
+# Feetech ROS2 package
+ROS2 wrapper for commanding and reading Feetech servos (STS/SCS models) using the [Feetech CPP Library](https://github.com/BioMorphic-Intelligence-Lab/feetech_cpp_lib). Uses the Feetech CPP Library in ROS2 nodes to command servos by publishing servo commands on ROS2 topics.
 
 This package assumes that you connect the servos using the URT board (a full duplex to half duplex adapter), which interfaces using USB with the companion computer.
 
-## Dependencies
-### Dynamixel SDK
-It also requires you to clone [Dynamixel SDK](https://github.com/ROBOTIS-GIT/DynamixelSDK) into your ROS2 workspace and build it.
+## How to use
+You can create your own nodes by adapting from the `feetech_ros2_interface.cpp` definition. Configurations for the nodes are stored in the files under `config`, which are then passed using ROS2 launch files. The node, driver, and servos have the following parameters that can be modified. In case a parameter is not specified, it will take a default value.s
 
-Example folder structure:
-```
-ros2_ws
-├── _config.yml
-├── src
-│   ├── feetech_ros2_driver <-- this repository
-│   └── DynamixelSDK <-- DynamixelSDK repository
-│       ├── dynamixel_sdk
-│       ├── dynamixel_sdk_examples (not strictly necessary)
-│       └── dynamixel_sdk_custom_interfaces (not strictly necessary)
-```
-
-### WiringPi (WiringOP)
-To interface with the companion computer (Orange Pi 5) GPIO I'm using the [wiringOP](https://github.com/orangepi-xunlong/wiringOP) library, which you can just install according to instructions. After installing use `gpio readall` to find the pin allocation for your particular board. The pins in the code follow the wPi column of the output. 
-The ROS2 node can be compiled against this library by including it in the CMakeLists.txt (see the CMakeLists.txt file in the repository). The ROS2 node needs to be run as root for the GPIO to be accessible, I have not yet found a workaround for this.
+| **Type** | **Name**           | **Description**                                                                                                                                                                        |   |   |
+|----------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+| Node     | frequency          | Frequency in Hz that the node runs at                                                                                                                                                  |   |   |
+| Driver   | port_name          | Name of the interface port on the computer                                                                                                                                             |   |   |
+|          | baud_rate          | Baud rate (bps) of communication with servos                                                                                                                                           |   |   |
+|          | frequency          | Frequency in Hz that the internal driver loop runs at (default 100 Hz)                                                                                                                 |   |   |
+| Servo    | ids                | List of servo IDs on the communication bus                                                                                                                                             |   |   |
+|          | operating_modes    | List of operating modes for the servos, corresponding in order with ids. Operating mode 0 is position, 2 is velocity                                                                   |   |   |
+|          | homing_modes       | List of homing modes for the servos. Homing mode 0 sets home at location at startup.                                                                                                   |   |   |
+|          | directions         | List of servo directions. 1 for clockwise and -1 for counter-clockwise.                                                                                                                |   |   |
+|          | max_speeds         | List of maximum output speeds in rad/s.                                                                                                                                                |   |   |
+|          | max_currents       | List of maximum currents in mA.                                                                                                                                                        |   |   |
+|          | gear_ratios        | List of gear ratios from servo horn to output (in case additional gearing is used). If the gearing reduces horn speed by 2 at the output, gear ratio is 2. In case of doubt, set to 1. |   |   |
+|          | proportional_gains | List of position P gains for driver position controller.                                                                                                                               |   |   |
+|          | integral_gains     | List of position I gains for driver position controller.                                                                                                                               |   |   |
+|          | derivative_gains   | List of position D gains for driver position controller.                                                                                                                               |   |   |

@@ -91,7 +91,7 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             // Set servo position
             if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
             {
-                // RCLCPP_INFO(this->get_logger(), "Setting reference position for servo %d to %f", ids_[i], servo_position);
+                RCLCPP_INFO(this->get_logger(), "Setting reference position for servo %d to %f", ids_[i], servo_position);
                 driver->setReferencePosition(ids_[i], servo_position);
             }
         }

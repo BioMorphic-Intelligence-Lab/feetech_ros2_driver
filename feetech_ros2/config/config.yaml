@@ -15,7 +15,7 @@ feetech_ros2_interface:
       directions: [1]
       max_speeds: [2.] #, 100., 100., 100., 100., 100., 100., 100.]
       max_currents: [100., 100., 100.] #, 100., 100., 100., 100., 100., 100., 100.]
-      gear_ratios: [2.]
+      gear_ratios: [1.]
       proportional_gains: [0.5]
       integral_gains: [0.1]
       derivative_gains: [0.0]

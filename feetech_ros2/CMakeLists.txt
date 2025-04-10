@@ -12,6 +12,7 @@ find_package(feetech_cpp_lib REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(std_srvs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetMode.srv"
@@ -25,6 +26,7 @@ ament_target_dependencies(feetech_ros2_interface
   rclcpp 
   feetech_cpp_lib
   sensor_msgs
+  std_srvs
 )
 
 install(TARGETS

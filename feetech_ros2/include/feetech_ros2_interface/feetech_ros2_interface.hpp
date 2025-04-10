@@ -2,6 +2,7 @@
 #include "feetech_cpp_lib/feetech_lib.hpp"
 
 #include <sensor_msgs/msg/joint_state.hpp>
+#include "std_srvs/srv/set_bool.hpp"
 
 #include <feetech_ros2/srv/set_mode.hpp>
 
@@ -14,6 +15,9 @@ public:
 
     void setModeCallback(const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
                          std::shared_ptr<feetech_ros2::srv::SetMode::Response> response);
+    
+    void resetHomePositionsCallback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                                    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
 private:
     /// @brief Callback for the timer, execute interface loop

@@ -125,6 +125,20 @@ void FeetechROS2Interface::setModeCallback(
     response->success = true;
 }
 
+void FeetechROS2Interface::resetHomePositionsCallback(
+    const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+    std::shared_ptr<std_srvs::srv::SetBool::Response> response)
+{
+    if(request->data)
+    {
+        for (uint8_t i=0; i< ids_.size(); i++)
+        {
+            driver->resetHomePosition(ids_[i]);
+        }
+        response->success = true;
+    }
+}
+
 void FeetechROS2Interface::publishServoState()
 {
     // TODO: this is a copilot generated code stub, review and replace
@@ -178,19 +192,26 @@ void FeetechROS2Interface::applyServoParams()
 
 int main(int argc, char * argv[])
 {
-  // Initialize ROS node
-  rclcpp::init(argc, argv);
-  auto feetech_ros2_interface = std::make_shared<FeetechROS2Interface>();
+    // Initialize ROS node
+    rclcpp::init(argc, argv);
+    auto feetech_ros2_interface = std::make_shared<FeetechROS2Interface>();
 
-  rclcpp::Service<feetech_ros2::srv::SetMode>::SharedPtr setModeSrv =
-    feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("set_servo_mode", 
-        std::bind(&FeetechROS2Interface::setModeCallback, 
-            feetech_ros2_interface, 
-            std::placeholders::_1, 
-            std::placeholders::_2));
+    rclcpp::Service<feetech_ros2::srv::SetMode>::SharedPtr setModeSrv =
+        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("set_servo_mode", 
+            std::bind(&FeetechROS2Interface::setModeCallback, 
+                feetech_ros2_interface, 
+                std::placeholders::_1, 
+                std::placeholders::_2));
+        
+    rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr resetHomePositionSrv =
+        feetech_ros2_interface->create_service<std_srvs::srv::SetBool>("reset_home_positions",
+            std::bind(&FeetechROS2Interface::resetHomePositionsCallback,
+                feetech_ros2_interface,
+                std::placeholders::_1,
+                std::placeholders::_2));
 
-  rclcpp::spin(feetech_ros2_interface);
-  rclcpp::shutdown();
+    rclcpp::spin(feetech_ros2_interface);
+    rclcpp::shutdown();
 
-  return 0;
+    return 0;
 }

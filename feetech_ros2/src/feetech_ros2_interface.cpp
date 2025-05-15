@@ -27,7 +27,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/servo/in/references/joint_references", 10,
+        "/servo/in/state", 10,
         std::bind(&FeetechROS2Interface::referenceCallback, this, std::placeholders::_1)
     );
 

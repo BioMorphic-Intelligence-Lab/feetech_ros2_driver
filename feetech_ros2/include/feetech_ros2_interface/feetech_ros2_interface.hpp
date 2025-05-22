@@ -41,6 +41,7 @@ private:
     
     // Data
     std::shared_ptr<FeetechServo> driver;
+    std::vector<double> start_offsets;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<uint8_t> ids_;
 

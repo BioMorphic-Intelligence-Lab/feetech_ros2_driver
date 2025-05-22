@@ -21,6 +21,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.max_speeds", std::vector<double>{0.1});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
+    this->declare_parameter("servos.start_offset", std::vector<double>{0.0});
     this->declare_parameter("servos.proportional_gains", std::vector<double>{3.0});
     this->declare_parameter("servos.derivative_gains", std::vector<double>{0.0});
     this->declare_parameter("servos.integral_gains", std::vector<double>{0.0});
@@ -59,6 +60,8 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
     applyServoParams();
 
+    start_offsets = this->get_parameter("servos.start_offsets").as_double_array();
+
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();
     timer_ = this->create_wall_timer(std::chrono::milliseconds(int(1000./node_frequency_)), std::bind(&FeetechROS2Interface::loop, this));
@@ -85,8 +88,10 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     {
         for (uint8_t i = 0; i < ids_.size(); i++)
         {
-            // Find servo position
-            double servo_position = msg->position[i];
+            // Find servo position and adjust for starting offset
+            // If the commanded position is 0, but the servo start offset was at +1 rad, the servo needs to go to a position
+            // that it thinks is -1 rad from its own zero
+            double servo_position = msg->position[i] - start_offsets[i];
 
             // Set servo position
             if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
@@ -141,11 +146,18 @@ void FeetechROS2Interface::resetHomePositionsCallback(
 
 void FeetechROS2Interface::publishServoState()
 {
-    // TODO: this is a copilot generated code stub, review and replace
     // Publish current servo positions and velocities
+    std::vector<double> servo_positions = driver->getCurrentPositions();
+    std::vector<double> adjusted_servo_positions(servo_positions.size());
+
+    for (uint8_t i=0; i<servo_positions.size(); ++i)
+    {
+        adjusted_servo_positions[i] = servo_positions[i] + start_offsets[i];
+    }
+
     auto servo_state_msg = sensor_msgs::msg::JointState();
     servo_state_msg.header.stamp = this->get_clock()->now();
-    servo_state_msg.position = driver->getCurrentPositions();
+    servo_state_msg.position = adjusted_servo_positions;
     servo_state_msg.velocity = driver->getCurrentVelocities();
 
     this->servo_state_publisher_->publish(servo_state_msg);

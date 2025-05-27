@@ -6,6 +6,8 @@
 
 #include <feetech_ros2/srv/set_mode.hpp>
 
+#include <feetech_ros2/srv/set_mode.hpp>
+
 
 class FeetechROS2Interface : public rclcpp::Node
 {

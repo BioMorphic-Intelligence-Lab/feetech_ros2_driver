@@ -61,6 +61,15 @@ FeetechROS2Interface::FeetechROS2Interface() :
     applyServoParams();
 
     start_offsets = this->get_parameter("servos.start_offsets").as_double_array();
+    // Set servo settings from parameter file
+    std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
+    std::vector<DriverMode> modes(operating_modes.size());
+    std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
+                    [](int val) { return static_cast<DriverMode>(val); });
+    driver->setOperatingModes(modes);
+
+    std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
+    driver->setGearRatios(gear_ratios);
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();

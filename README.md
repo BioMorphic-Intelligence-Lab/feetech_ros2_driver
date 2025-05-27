@@ -19,6 +19,7 @@ You can create your own nodes by adapting from the `feetech_ros2_interface.cpp` 
 |          | max_speeds         | List of maximum output speeds in rad/s.                                                                                                                                                |   |   |
 |          | max_currents       | List of maximum currents in mA.                                                                                                                                                        |   |   |
 |          | gear_ratios        | List of gear ratios from servo horn to output (in case additional gearing is used). If the gearing reduces horn speed by 2 at the output, gear ratio is 2. In case of doubt, set to 1. |   |   |
+|          | start_offsets        | List of offsets in radians from the zero position to where the servo is when initialized. Set to 0 if not applicable. |   |   |
 
 
 ## Credits

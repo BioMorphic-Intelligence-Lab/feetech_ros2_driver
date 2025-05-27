@@ -10,6 +10,7 @@
   <depend>feetech_cpp_lib</depend>
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
+  <depend>rcl_interfaces</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

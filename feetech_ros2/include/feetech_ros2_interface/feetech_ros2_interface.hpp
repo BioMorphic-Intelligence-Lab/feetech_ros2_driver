@@ -2,6 +2,9 @@
 #include "feetech_cpp_lib/feetech_lib.hpp"
 
 #include <sensor_msgs/msg/joint_state.hpp>
+#include "std_srvs/srv/set_bool.hpp"
+
+#include <feetech_ros2/srv/set_mode.hpp>
 
 #include <feetech_ros2/srv/set_mode.hpp>
 
@@ -14,6 +17,9 @@ public:
 
     void setModeCallback(const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
                          std::shared_ptr<feetech_ros2::srv::SetMode::Response> response);
+    
+    void resetHomePositionsCallback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
+                                    std::shared_ptr<std_srvs::srv::SetBool::Response> response);
 
 private:
     /// @brief Callback for the timer, execute interface loop
@@ -30,9 +36,14 @@ private:
 
     // Callbacks
     void referenceCallback(const sensor_msgs::msg::JointState::SharedPtr msg);
+
+    // Helpers
+    /// @brief Apply all the servo parameters from the parameter file
+    void applyServoParams();
     
     // Data
     std::shared_ptr<FeetechServo> driver;
+    std::vector<double> start_offsets;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<uint8_t> ids_;
 

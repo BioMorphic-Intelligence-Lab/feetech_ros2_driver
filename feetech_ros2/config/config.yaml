@@ -5,12 +5,18 @@ feetech_ros2_interface:
 
     driver:
       port_name: "/dev/ttyUSB0"
-      baud_rate: 1000000
+      baud_rate: 115200
       frequency: 100.0
 
     servos:
-      ids: [11, 32, 13] #, 2, 3, 4, 5, 6, 7, 8]
-      operating_modes: [4, 4, 4] # Velocity mode 2, continuous position mode 4
-      homing_modes: [0, 0, 0] #, 0, 0, 0, 0, 0, 0, 0]
-      max_speeds: [1.0, 1.0, 1.0] #, 100., 100., 100., 100., 100., 100., 100.]
+      ids: [33] #, 2, 3, 4, 5, 6, 7, 8]
+      operating_modes: [4] # Velocity mode 2, continuous position mode 4
+      homing_modes: [0] #, 0, 0, 0, 0, 0, 0, 0]
+      directions: [1]
+      max_speeds: [2.] #, 100., 100., 100., 100., 100., 100., 100.]
       max_currents: [100., 100., 100.] #, 100., 100., 100., 100., 100., 100., 100.]
+      gear_ratios: [1.]
+      start_offsets: [0.]
+      proportional_gains: [0.5]
+      integral_gains: [0.1]
+      derivative_gains: [0.0]

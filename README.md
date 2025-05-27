@@ -19,9 +19,7 @@ You can create your own nodes by adapting from the `feetech_ros2_interface.cpp` 
 |          | max_speeds         | List of maximum output speeds in rad/s.                                                                                                                                                |   |   |
 |          | max_currents       | List of maximum currents in mA.                                                                                                                                                        |   |   |
 |          | gear_ratios        | List of gear ratios from servo horn to output (in case additional gearing is used). If the gearing reduces horn speed by 2 at the output, gear ratio is 2. In case of doubt, set to 1. |   |   |
-|          | proportional_gains | List of position P gains for driver position controller.                                                                                                                               |   |   |
-|          | integral_gains     | List of position I gains for driver position controller.                                                                                                                               |   |   |
-|          | derivative_gains   | List of position D gains for driver position controller.                                                                                                                           |   |   |
+
 
 ## Credits
 - Anton Bredenbeck ([@antbre](https://github.com/antbre), Delft University of Technology)

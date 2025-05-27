@@ -150,13 +150,17 @@ void FeetechROS2Interface::publishServoState()
     std::vector<double> servo_positions = driver->getCurrentPositions();
     std::vector<double> adjusted_servo_positions(servo_positions.size());
 
+    std::vector<std::string> names(servo_positions.size());
+
     for (uint8_t i=0; i<servo_positions.size(); ++i)
     {
         adjusted_servo_positions[i] = servo_positions[i] + start_offsets[i];
+        names[i] = "q" + std::to_string(i+1);
     }
 
     auto servo_state_msg = sensor_msgs::msg::JointState();
     servo_state_msg.header.stamp = this->get_clock()->now();
+    servo_state_msg.name = names;
     servo_state_msg.position = adjusted_servo_positions;
     servo_state_msg.velocity = driver->getCurrentVelocities();
 

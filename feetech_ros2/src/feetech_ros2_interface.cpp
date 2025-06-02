@@ -200,18 +200,6 @@ void FeetechROS2Interface::applyServoParams()
     // max speeds
     std::vector<double> max_speeds = this->get_parameter("servos.max_speeds").as_double_array();
     driver->setMaxSpeeds(max_speeds);
-
-    // proportional gains
-    std::vector<double> proportional_gains = this->get_parameter("servos.proportional_gains").as_double_array();
-    driver->setProportionalGains(proportional_gains);
-
-    // derivative gains
-    std::vector<double> derivative_gains = this->get_parameter("servos.derivative_gains").as_double_array();
-    driver->setDerivativeGains(derivative_gains);
-
-    // integral gains
-    std::vector<double> integral_gains = this->get_parameter("servos.integral_gains").as_double_array();
-    driver->setIntegralGains(integral_gains);
 }
 
 

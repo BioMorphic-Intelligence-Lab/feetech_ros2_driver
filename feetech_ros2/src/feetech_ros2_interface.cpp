@@ -22,16 +22,12 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
     this->declare_parameter("servos.start_offsets", std::vector<double>{0.0});
-    this->declare_parameter("servos.proportional_gains", std::vector<double>{3.0});
-    this->declare_parameter("servos.derivative_gains", std::vector<double>{0.0});
-    this->declare_parameter("servos.integral_gains", std::vector<double>{0.0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
         "/servo/in/state", 10,
         std::bind(&FeetechROS2Interface::referenceCallback, this, std::placeholders::_1)
     );
-
 
     // Publishers
     servo_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/servo/out/state", 10);

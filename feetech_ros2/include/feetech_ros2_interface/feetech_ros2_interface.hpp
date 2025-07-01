@@ -41,6 +41,9 @@ private:
     /// @brief Apply all the servo parameters from the parameter file
     void applyServoParams();
     
+    /// @brief Check if the length of the parameter defining vectors are the same as the number of ids
+    void checkParameterSizes(size_t num_servos) const;
+    
     // Data
     std::shared_ptr<FeetechServo> driver;
     std::vector<double> start_offsets;

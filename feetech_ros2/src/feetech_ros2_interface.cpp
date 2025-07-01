@@ -11,6 +11,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
     this->declare_parameter("driver.frequency", 100.);
+    this->declare_parameter("driver.homing", true);
     this->declare_parameter("driver.logging", false);
 
     // Servo parameters
@@ -38,6 +39,9 @@ FeetechROS2Interface::FeetechROS2Interface() :
     std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
 
+    // Check if param sizes match
+    size_t num_servos = int_ids.size();
+    this->checkParameterSizes(num_servos);
 
     // Construct Driver
     driver = std::make_shared<FeetechServo>(
@@ -45,7 +49,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.baud_rate").as_int(),
         this->get_parameter("driver.frequency").as_double(),
         ids_,
-        false,
+        this->get_parameter("driver.homing").as_bool(),
         this->get_parameter("driver.logging").as_bool()
     );
     RCLCPP_INFO(this->get_logger(), "Driver constructed");
@@ -197,6 +201,45 @@ void FeetechROS2Interface::applyServoParams()
     // max speeds
     std::vector<double> max_speeds = this->get_parameter("servos.max_speeds").as_double_array();
     driver->setMaxSpeeds(max_speeds);
+}
+
+void FeetechROS2Interface::checkParameterSizes(size_t num_servos) const
+{
+    if (this->get_parameter("servos.operating_modes").as_integer_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.operating_modes not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.homing_modes").as_integer_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.homing_modes not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.directions").as_integer_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.directions not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.max_speeds").as_double_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.max_speeds not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.max_currents").as_double_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.max_currents not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.gear_ratios").as_double_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.gear_ratios not the same size as number of servos!");
+        exit(-1);
+    }
+    if (this->get_parameter("servos.start_offsets").as_double_array().size() != num_servos)
+    {
+        RCLCPP_ERROR(this->get_logger(), "servos.start_offsets not the same size as number of servos!");
+        exit(-1);
+    }
 }
 
 

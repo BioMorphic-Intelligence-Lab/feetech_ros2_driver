@@ -168,6 +168,7 @@ void FeetechROS2Interface::publishServoState()
     servo_state_msg.name = names;
     servo_state_msg.position = adjusted_servo_positions;
     servo_state_msg.velocity = driver->getCurrentVelocities();
+    servo_state_msg.effort = driver->getCurrentCurrents();
 
     this->servo_state_publisher_->publish(servo_state_msg);
 }

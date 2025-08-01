@@ -6,6 +6,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     // Declare all parameters
     // Node parameters
     this->declare_parameter("node.frequency", 20.);
+    this->declare_parameter("node.effort_feedback_type", std::string("pwm")); // "current" or "pwm"
     
     // Driver parameters
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
@@ -172,7 +173,14 @@ void FeetechROS2Interface::publishServoState()
     servo_state_msg.name = names;
     servo_state_msg.position = adjusted_servo_positions;
     servo_state_msg.velocity = driver->getCurrentVelocities();
-    servo_state_msg.effort = driver->getCurrentCurrents();
+    if (this->get_parameter("node.effort_feedback_type").as_string() == std::string("pwm"))
+    {
+        servo_state_msg.effort = driver->getCurrentPWMs();
+    }
+    else if (this->get_parameter("node.effort_feedback_type").as_string() == std::string("current"))
+    {
+        servo_state_msg.effort = driver->getCurrentCurrents();
+    }
 
     this->servo_state_publisher_->publish(servo_state_msg);
 }

@@ -2,6 +2,7 @@
   ros__parameters:
     node:
       frequency: 25.0
+      effort_feedback_type: "pwm" # Options: "pwm", "current"
 
     driver:
       port_name: "/dev/ttyUSB0"

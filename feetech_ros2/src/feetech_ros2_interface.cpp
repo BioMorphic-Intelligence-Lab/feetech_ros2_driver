@@ -12,7 +12,6 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
     this->declare_parameter("driver.frequency", 100.);
-    this->declare_parameter("driver.homing", true);
     this->declare_parameter("driver.logging", false);
 
     // Servo parameters
@@ -24,6 +23,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
     this->declare_parameter("servos.start_offsets", std::vector<double>{0.0});
+    this->declare_parameter("servos.home_ticks", std::vector<int>{0});
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -34,12 +34,20 @@ FeetechROS2Interface::FeetechROS2Interface() :
     // Publishers
     servo_state_publisher_ = this->create_publisher<sensor_msgs::msg::JointState>("/servo/out/state", 10);
     
-    // Generate uint8_t vector of ids
+    // Generate uint8_t vector of ids, homing modes, and homing ticks
     std::vector<long> int_ids = this->get_parameter("servos.ids").as_integer_array();
     ids_.resize(int_ids.size());
     std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
-
+    std::vector<long> int_homing_modes = this->get_parameter("servos.homing_modes").as_integer_array();
+    homing_modes_.resize(int_homing_modes.size());
+    std::transform(int_homing_modes.begin(), int_homing_modes.end(), homing_modes_.begin(),
+                    [](int val) { return static_cast<uint8_t>(val); });
+    std::vector<long> int_home_ticks = this->get_parameter("servos.home_ticks").as_integer_array();
+    home_ticks_.resize(int_home_ticks.size());
+    std::transform(int_home_ticks.begin(), int_home_ticks.end(), home_ticks_.begin(),
+                    [](int val) { return static_cast<uint16_t>(val); });
+    
     // Check if param sizes match
     size_t num_servos = int_ids.size();
     this->checkParameterSizes(num_servos);
@@ -50,7 +58,8 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.baud_rate").as_int(),
         this->get_parameter("driver.frequency").as_double(),
         ids_,
-        this->get_parameter("driver.homing").as_bool(),
+        homing_modes_,
+        home_ticks_,
         this->get_parameter("driver.logging").as_bool()
     );
     RCLCPP_INFO(this->get_logger(), "Driver constructed");
@@ -61,7 +70,9 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
     applyServoParams();
 
+    // Remember start offsets
     start_offsets = this->get_parameter("servos.start_offsets").as_double_array();
+    
     // Set servo settings from parameter file
     std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
     std::vector<DriverMode> modes(operating_modes.size());
@@ -69,6 +80,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
                     [](int val) { return static_cast<DriverMode>(val); });
     driver->setOperatingModes(modes);
 
+    // Set Gear Ratios
     std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
     driver->setGearRatios(gear_ratios);
 
@@ -98,10 +110,8 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     {
         for (uint8_t i = 0; i < ids_.size(); i++)
         {
-            // Find servo position and adjust for starting offset
-            // If the commanded position is 0, but the servo start offset was at +1 rad, the servo needs to go to a position
-            // that it thinks is -1 rad from its own zero
-            double servo_position = msg->position[i] - start_offsets[i];
+            // Find servo position
+            double servo_position = msg->position[i];
 
             // Set servo position
             if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
@@ -158,20 +168,17 @@ void FeetechROS2Interface::publishServoState()
 {
     // Publish current servo positions and velocities
     std::vector<double> servo_positions = driver->getCurrentPositions();
-    std::vector<double> adjusted_servo_positions(servo_positions.size());
-
     std::vector<std::string> names(servo_positions.size());
 
     for (uint8_t i=0; i<servo_positions.size(); ++i)
     {
-        adjusted_servo_positions[i] = start_offsets[i] - servo_positions[i];
         names[i] = "q" + std::to_string(i+1);
     }
 
     auto servo_state_msg = sensor_msgs::msg::JointState();
     servo_state_msg.header.stamp = this->get_clock()->now();
     servo_state_msg.name = names;
-    servo_state_msg.position = adjusted_servo_positions;
+    servo_state_msg.position = servo_positions;
     servo_state_msg.velocity = driver->getCurrentVelocities();
     if (this->get_parameter("node.effort_feedback_type").as_string() == std::string("pwm"))
     {

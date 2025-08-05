@@ -164,7 +164,7 @@ void FeetechROS2Interface::publishServoState()
 
     for (uint8_t i=0; i<servo_positions.size(); ++i)
     {
-        adjusted_servo_positions[i] = start_offsets[i] - servo_positions[i];
+        adjusted_servo_positions[i] = servo_positions[i] + start_offsets[i];
         names[i] = "q" + std::to_string(i+1);
     }
 

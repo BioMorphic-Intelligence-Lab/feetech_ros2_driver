@@ -70,6 +70,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
 FeetechROS2Interface::~FeetechROS2Interface()
 {
+    std::cout<<"Destroying Feetech ROS2 interface"<<std::endl;
     // Stop all servos
     driver->stopAll();
     // Close port

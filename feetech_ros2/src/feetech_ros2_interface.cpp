@@ -7,7 +7,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     // Node parameters
     this->declare_parameter("node.frequency", 20.);
     this->declare_parameter("node.effort_feedback_type", std::string("pwm")); // "current" or "pwm"
-    
+
     // Driver parameters
     this->declare_parameter("driver.port_name", "/dev/ttyUSB0");
     this->declare_parameter("driver.baud_rate", 1000000);
@@ -157,7 +157,7 @@ void FeetechROS2Interface::publishServoState()
     for (uint8_t i=0; i<servo_positions.size(); ++i)
     {
         adjusted_servo_positions[i] = servo_positions[i] + start_offsets[i];
-        names[i] = "q" + std::to_string(i+1);
+        names[i] = "q" + std::to_string(i);
     }
 
     auto servo_state_msg = sensor_msgs::msg::JointState();
@@ -250,14 +250,14 @@ int main(int argc, char * argv[])
     auto feetech_ros2_interface = std::make_shared<FeetechROS2Interface>();
 
     rclcpp::Service<feetech_ros2::srv::SetMode>::SharedPtr setModeSrv =
-        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("set_servo_mode", 
+        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("/set_servo_mode", 
             std::bind(&FeetechROS2Interface::setModeCallback, 
                 feetech_ros2_interface, 
                 std::placeholders::_1, 
                 std::placeholders::_2));
         
     rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr resetHomePositionSrv =
-        feetech_ros2_interface->create_service<std_srvs::srv::SetBool>("reset_home_positions",
+        feetech_ros2_interface->create_service<std_srvs::srv::SetBool>("/reset_home_positions",
             std::bind(&FeetechROS2Interface::resetHomePositionsCallback,
                 feetech_ros2_interface,
                 std::placeholders::_1,

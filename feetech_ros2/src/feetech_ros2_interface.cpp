@@ -124,12 +124,36 @@ void FeetechROS2Interface::setModeCallback(
     const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
     std::shared_ptr<feetech_ros2::srv::SetMode::Response> response)
 {
+    int8_t mode;
     // Set mode for all servos
     for (uint8_t i = 0; i < ids_.size(); i++)
     {
         driver->setOperatingMode(ids_[i], static_cast<DriverMode>(request->operating_mode));
+        mode = driver->readOperatingMode(ids_[i]);
     }
-    response->success = true;
+    // If requested mode is 4 (cont position) and the STSMode is Position, mode change succesfull
+    if (request->operating_mode == 4 && mode == STSMode::STS_POSITION)
+    {
+        response->success = true;
+    }
+    else if (request->operating_mode == 1 && mode == STSMode::STS_VELOCITY)
+    {
+        response->success = true;
+    } 
+    // If requested mode does not correspond to read mode
+    else if (request->operating_mode == 1 && mode == STSMode::STS_POSITION)
+    {
+        response->success = false;
+    }
+    else if (request->operating_mode == 4 && mode == STSMode::STS_VELOCITY)
+    {
+        response->success = false;
+    }
+    // If mode reading (i.e. verification) fails
+    else if (mode < 0)
+    {
+        response->success = false;
+    }
 }
 
 void FeetechROS2Interface::resetHomePositionsCallback(

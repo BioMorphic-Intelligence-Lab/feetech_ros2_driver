@@ -294,7 +294,7 @@ int main(int argc, char * argv[])
                 std::placeholders::_2));
 
     rclcpp::Service<feetech_ros2::srv::SetMaxSpeed>::SharedPtr setMaxSpeedSrv =
-        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMaxSpeed>("set_servo_max_speed", 
+        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMaxSpeed>("/set_servo_max_speed", 
             std::bind(&FeetechROS2Interface::setMaxSpeedCallback, 
                 feetech_ros2_interface, 
                 std::placeholders::_1, 

@@ -6,7 +6,7 @@
 
 #include <feetech_ros2/srv/set_mode.hpp>
 
-#include <feetech_ros2/srv/set_mode.hpp>
+#include <feetech_ros2/srv/set_max_speed.hpp>
 
 
 class FeetechROS2Interface : public rclcpp::Node
@@ -17,6 +17,9 @@ public:
 
     void setModeCallback(const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
                          std::shared_ptr<feetech_ros2::srv::SetMode::Response> response);
+
+    void setMaxSpeedCallback(const std::shared_ptr<feetech_ros2::srv::SetMaxSpeed::Request> request,
+                         std::shared_ptr<feetech_ros2::srv::SetMaxSpeed::Response> response);
     
     void resetHomePositionsCallback(const std::shared_ptr<std_srvs::srv::SetBool::Request> request,
                                     std::shared_ptr<std_srvs::srv::SetBool::Response> response);

@@ -120,6 +120,19 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
     }
 }
 
+void FeetechROS2Interface::setMaxSpeedCallback(
+    const std::shared_ptr<feetech_ros2::srv::SetMaxSpeed::Request> request,
+    std::shared_ptr<feetech_ros2::srv::SetMaxSpeed::Response> response)
+{
+    // Set mode for all servos
+    for (uint8_t i = 0; i < ids_.size(); i++)
+    {
+        driver->setMaxSpeed(ids_[i], static_cast<double>(request->max_speed));
+    }
+    response->success = true;
+}
+
+
 void FeetechROS2Interface::setModeCallback(
     const std::shared_ptr<feetech_ros2::srv::SetMode::Request> request,
     std::shared_ptr<feetech_ros2::srv::SetMode::Response> response)
@@ -276,6 +289,13 @@ int main(int argc, char * argv[])
     rclcpp::Service<feetech_ros2::srv::SetMode>::SharedPtr setModeSrv =
         feetech_ros2_interface->create_service<feetech_ros2::srv::SetMode>("/set_servo_mode", 
             std::bind(&FeetechROS2Interface::setModeCallback, 
+                feetech_ros2_interface, 
+                std::placeholders::_1, 
+                std::placeholders::_2));
+
+    rclcpp::Service<feetech_ros2::srv::SetMaxSpeed>::SharedPtr setMaxSpeedSrv =
+        feetech_ros2_interface->create_service<feetech_ros2::srv::SetMaxSpeed>("set_servo_max_speed", 
+            std::bind(&FeetechROS2Interface::setMaxSpeedCallback, 
                 feetech_ros2_interface, 
                 std::placeholders::_1, 
                 std::placeholders::_2));

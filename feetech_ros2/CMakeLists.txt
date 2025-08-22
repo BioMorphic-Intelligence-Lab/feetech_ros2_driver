@@ -16,6 +16,7 @@ find_package(std_srvs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/SetMode.srv"
+  "srv/SetMaxSpeed.srv"
 )
 
 add_executable(feetech_ros2_interface src/feetech_ros2_interface.cpp)

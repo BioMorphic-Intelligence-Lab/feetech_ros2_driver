@@ -35,5 +35,11 @@ private:
     std::shared_ptr<FeetechServo> driver;
     rclcpp::TimerBase::SharedPtr timer_;
     std::vector<uint8_t> ids_;
+    std::vector<DriverMode> interface_modes_;
+    // Software continuous position control state (radians)
+    std::vector<double> continuous_positions_;
+    std::vector<double> last_raw_positions_;
+    std::vector<double> target_positions_;
+    std::vector<double> max_speeds_;
 
 };

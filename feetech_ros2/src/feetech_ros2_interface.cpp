@@ -1,4 +1,6 @@
 #include "feetech_ros2_interface.hpp"
+#include <cmath>
+#include <limits>
 
 FeetechROS2Interface::FeetechROS2Interface() : 
     Node("feetech_ros2_interface")
@@ -18,7 +20,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
-        "/servo/in/references/joint_velocities", 10,
+        "/servo/in/references", 10,
         std::bind(&FeetechROS2Interface::referenceCallback, this, std::placeholders::_1)
     );
 
@@ -38,20 +40,52 @@ FeetechROS2Interface::FeetechROS2Interface() :
         this->get_parameter("driver.frequency").as_double(),
         ids_
     );
-
+    
     // Optional: Set driver settings
     DriverSettings settings = driver->getDriverSettings();
     driver->setDriverSettings(settings);
 
     // Set servo settings from parameter file
     std::vector<long> operating_modes = this->get_parameter("servos.operating_modes").as_integer_array();
-    std::vector<DriverMode> modes(operating_modes.size());
-    std::transform(operating_modes.begin(), operating_modes.end(), modes.begin(),
-                    [](int val) { return static_cast<DriverMode>(val); });
-    driver->setOperatingModes(modes);
+    interface_modes_.resize(operating_modes.size());
+    std::vector<DriverMode> internal_modes(operating_modes.size());
+    for (std::size_t i = 0; i < operating_modes.size(); ++i)
+    {
+        interface_modes_[i] = static_cast<DriverMode>(operating_modes[i]);
+        // For CONTINUOUS_POSITION, run the hardware in VELOCITY mode and let this node
+        // handle multi-turn position control in software.
+        if (interface_modes_[i] == DriverMode::CONTINUOUS_POSITION)
+        {
+            internal_modes[i] = DriverMode::VELOCITY;
+        }
+        else
+        {
+            internal_modes[i] = interface_modes_[i];
+        }
+    }
+    driver->setOperatingModes(internal_modes);
 
     std::vector<double> gear_ratios = this->get_parameter("servos.gear_ratios").as_double_array();
     driver->setGearRatios(gear_ratios);
+
+    // Read max speeds for software continuous position control (rad/s)
+    max_speeds_ = this->get_parameter("servos.max_speeds").as_double_array();
+
+    // Initialize continuous position control state from current positions
+    const auto current_positions = driver->getCurrentPositions();
+    std::size_t n = ids_.size();
+    continuous_positions_.assign(n, 0.0);
+    last_raw_positions_.assign(n, 0.0);
+    target_positions_.assign(n, 0.0);
+    if (current_positions.size() == n)
+    {
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            continuous_positions_[i] = current_positions[i];
+            last_raw_positions_[i] = current_positions[i];
+            target_positions_[i] = current_positions[i];
+        }
+    }
 
     // Timer
     double node_frequency_ = this->get_parameter("node.frequency").as_double();
@@ -68,6 +102,67 @@ FeetechROS2Interface::~FeetechROS2Interface()
 
 void FeetechROS2Interface::loop()
 {
+    // Update software continuous positions from current raw positions
+    const auto raw_positions = driver->getCurrentPositions();
+    const std::size_t n = ids_.size();
+    if (raw_positions.size() == n)
+    {
+        if (continuous_positions_.size() != n)
+        {
+            continuous_positions_.assign(n, 0.0);
+            last_raw_positions_.assign(n, 0.0);
+        }
+
+        constexpr double PI = M_PI;
+        constexpr double TWO_PI = 2.0 * M_PI;
+
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            double raw = raw_positions[i];
+            double & last_raw = last_raw_positions_[i];
+            double & cont = continuous_positions_[i];
+
+            double delta = raw - last_raw;
+            if (delta > PI)
+            {
+                delta -= TWO_PI;
+            }
+            else if (delta < -PI)
+            {
+                delta += TWO_PI;
+            }
+
+            cont += delta;
+            last_raw = raw;
+        }
+    }
+
+    // Absolute multi-turn position control in CONTINUOUS_POSITION mode using velocity commands
+    if (target_positions_.size() != n)
+    {
+        target_positions_ = continuous_positions_;
+    }
+    for (std::size_t i = 0; i < n; ++i)
+    {
+        if (interface_modes_[i] == DriverMode::CONTINUOUS_POSITION)
+        {
+            double error = target_positions_[i] - continuous_positions_[i];
+
+            // Simple P controller on position error -> velocity command
+            const double Kp = 1.0;  // rad/s per rad of error (tune as needed)
+            double v_cmd = Kp * error;
+
+            double vmax = (i < max_speeds_.size()) ? max_speeds_[i] : std::numeric_limits<double>::infinity();
+            if (std::isfinite(vmax))
+            {
+                if (v_cmd > vmax) v_cmd = vmax;
+                else if (v_cmd < -vmax) v_cmd = -vmax;
+            }
+
+            driver->setReferenceVelocity(ids_[i], v_cmd);
+        }
+    }
+
     // Publish servo state to ROS2 network
     publishServoState();
 }
@@ -81,9 +176,18 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             // Find servo position
             double servo_position = msg->position[i];
 
-            // Set servo position
-            if (driver->getOperatingMode(ids_[i]) == DriverMode::CONTINUOUS_POSITION)
-                driver->setReferencePosition(ids_[i], servo_position);
+            // Absolute multi-turn position command in continuous position mode:
+            // store target; control is handled in loop() via velocity commands
+            if (interface_modes_[i] == DriverMode::CONTINUOUS_POSITION)
+            {
+                // Ensure storage is sized correctly in case of parameter changes
+                if (target_positions_.size() != ids_.size())
+                {
+                    target_positions_.assign(ids_.size(), 0.0);
+                }
+
+                target_positions_[i] = servo_position;
+            }
         }
     }
     if(msg->velocity.size() == ids_.size())
@@ -94,7 +198,7 @@ void FeetechROS2Interface::referenceCallback(const sensor_msgs::msg::JointState:
             double servo_velocity = msg->velocity[i];
 
             // Set servo velocity
-            if (driver->getOperatingMode(ids_[i]) == DriverMode::VELOCITY)
+            if (interface_modes_[i] == DriverMode::VELOCITY)
             {
                 driver->setReferenceVelocity(ids_[i], servo_velocity);
             }

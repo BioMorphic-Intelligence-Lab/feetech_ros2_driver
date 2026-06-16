@@ -99,16 +99,17 @@ void DriverFeetechServo::PublishServoData()
 {
   // Publish current servo positions and velocities
   auto current_servo_state_msg = sensor_msgs::msg::JointState();
-  std::vector<double> positions, velocities;
+  std::vector<double> positions, velocities, currents;
   for(uint16_t i = 0; i < this->ids.size(); i++) {
     positions.push_back(mServoData.servo_map[this->ids.at(i)].position);
     velocities.push_back(mServoData.servo_map[this->ids.at(i)].velocity);
+    currents.push_back(mServoData.servo_map[this->ids.at(i)].current);
   }
 
   current_servo_state_msg.header.stamp = this->get_clock()->now();
   current_servo_state_msg.position = positions;
   current_servo_state_msg.velocity = velocities;
-
+  current_servo_state_msg.current = currents;
   this->current_servo_state_publisher_->publish(current_servo_state_msg);
 }
 

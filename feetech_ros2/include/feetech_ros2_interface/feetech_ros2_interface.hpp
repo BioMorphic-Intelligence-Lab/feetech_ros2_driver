@@ -5,6 +5,10 @@
 
 #include <feetech_ros2/srv/set_mode.hpp>
 
+#include <algorithm>
+#include <deque>
+#include <vector>
+
 
 class FeetechROS2Interface : public rclcpp::Node
 {
@@ -21,6 +25,7 @@ private:
 
     /// @brief Publish the servo state to the ROS2 network
     void publishServoState();
+    double pushEffortAverage(std::size_t servo_idx, double raw_effort);
 
     // Subscriptions
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr servo_reference_subscription_;
@@ -41,5 +46,7 @@ private:
     std::vector<double> last_raw_positions_;
     std::vector<double> target_positions_;
     std::vector<double> max_speeds_;
+    std::size_t effort_average_window_size_{10};
+    std::vector<std::deque<double>> effort_history_;
 
 };

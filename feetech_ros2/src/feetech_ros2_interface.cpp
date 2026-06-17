@@ -1,4 +1,5 @@
 #include "feetech_ros2_interface.hpp"
+#include <algorithm>
 #include <cmath>
 #include <limits>
 
@@ -17,6 +18,7 @@ FeetechROS2Interface::FeetechROS2Interface() :
     this->declare_parameter("servos.max_speeds", std::vector<double>{250.0});
     this->declare_parameter("servos.max_currents", std::vector<double>{1000.0});
     this->declare_parameter("servos.gear_ratios", std::vector<double>{1.0});
+    this->declare_parameter<int>("effort_average_window_size", 10);
 
     // Subscribers
     servo_reference_subscription_ = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -32,6 +34,11 @@ FeetechROS2Interface::FeetechROS2Interface() :
     ids_.resize(int_ids.size());
     std::transform(int_ids.begin(), int_ids.end(), ids_.begin(),
                     [](int val) { return static_cast<uint8_t>(val); });
+
+    effort_average_window_size_ = static_cast<std::size_t>(std::max(
+        static_cast<int64_t>(1),
+        this->get_parameter("effort_average_window_size").as_int()));
+    effort_history_.assign(ids_.size(), {});
 
     // Construct Driver
     driver = std::make_shared<FeetechServo>(
@@ -218,15 +225,40 @@ void FeetechROS2Interface::setModeCallback(
     response->success = true;
 }
 
+double FeetechROS2Interface::pushEffortAverage(const std::size_t servo_idx, const double raw_effort)
+{
+    if (servo_idx >= effort_history_.size())
+    {
+        return raw_effort;
+    }
+
+    std::deque<double> & window = effort_history_[servo_idx];
+    window.push_back(raw_effort);
+    while (window.size() > effort_average_window_size_)
+    {
+        window.pop_front();
+    }
+
+    double sum = 0.0;
+    for (const double sample : window)
+    {
+        sum += sample;
+    }
+    return sum / static_cast<double>(window.size());
+}
+
 void FeetechROS2Interface::publishServoState()
 {
-    // TODO: this is a copilot generated code stub, review and replace
-    // Publish current servo positions and velocities
+    const auto raw_efforts = driver->getStallEffortAmps();
     auto servo_state_msg = sensor_msgs::msg::JointState();
     servo_state_msg.header.stamp = this->get_clock()->now();
     servo_state_msg.position = driver->getCurrentPositions();
     servo_state_msg.velocity = driver->getCurrentVelocities();
-    servo_state_msg.effort = driver->getCurrentCurrents();
+    servo_state_msg.effort.resize(raw_efforts.size());
+    for (std::size_t i = 0; i < raw_efforts.size(); ++i)
+    {
+        servo_state_msg.effort[i] = pushEffortAverage(i, raw_efforts[i]);
+    }
 
     this->servo_state_publisher_->publish(servo_state_msg);
 }

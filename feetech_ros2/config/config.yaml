@@ -16,3 +16,10 @@ feetech_ros2_interface:
       max_currents: [100., 100., 100., 100., 100., 100., 100., 100.] #, 100., 100., 100., 100., 100., 100., 100.]
 
     effort_average_window_size: 25
+
+    # On shutdown (Ctrl+C), drive the servos to the positions on /servo/in/safe_references
+    # (all 0.0 if none received), then stop them
+    shutdown:
+      return_to_safe: true
+      timeout_s: 10.0
+      tolerance: 0.05
